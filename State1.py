@@ -368,13 +368,48 @@ def computeExpectedReward(state, action):
         reward += opProb * computeReward(state, op)
     return reward
 
+
+# TODO: finish implementing algorithms - policy iteration and value iteration
+# value iteration functions
+
+# returns an optimal value function with gama variable set to 0.9
+def value_iteration():
+    pass
+
+
+# returns a proper policy according to giving value function
+def get_policy_from_value_function(value_func):
+    pass
+
+
+# policy iteration functions
+
+
+#  returns an optimal policy with gama var set to 0.9
+def policy_iteration():
+    pass
+
+
+# general function for both algorithms
+
+
+# returns the value of a given state
+def calc_value_for_curr_state(state):
+    pass
+
+
+# create the initial policy
+def get_init_policy():
+    pass
+
+# TODO: when finished, remove initial poilicy
 # initial policy
 policy = dict()
 for key in allStates.keys():
     num = -1
     while num == -1:
         num = random.randint(0, len(OPS) - 1)
-        if OPS[num] in ["random","pick","putInBasket","idle","clean"]:
+        if OPS[num] in ["random", "pick", "putInBasket", "idle", "clean"]:
             num = -1
     policy[key] = OPS[num]
     if allStates[key].isEnd():
