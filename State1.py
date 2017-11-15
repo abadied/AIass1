@@ -358,6 +358,16 @@ def getProbSAS(state1, state2, action):
             sum += TRAN_PROB_MAT[actionIndex][numOp]
     return sum
 
+
+def computeExpectedReward(state, action):
+    """given a state and an action that the robot tried to do (and not necessarily succeeded),
+     returns the expectation of the received reward trying this action"""
+    reward = 0
+    for op in OPS:
+        opProb = TRAN_PROB_MAT[OPS.index(action)][OPS.index(op)]
+        reward += opProb * computeReward(state, op)
+    return reward
+
 # initial policy
 policy = dict()
 for key in allStates.keys():
