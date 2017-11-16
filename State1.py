@@ -339,7 +339,7 @@ def getAllStates():
     return allStates, statesvalus
 
 
-allStates, statesvalue = getAllStates()
+allStates, statesValues = getAllStates()
 
 
 def computeReward(state, action):
@@ -383,22 +383,26 @@ while True:
     for state1 in allStates.keys():
         maxExpectedReward = -100000
         reward = 0
+        possibleStates = {}
+        for i in range(len(OPS)):
+            if (allStates[state1].legalOp(OPS[i])):
+                possibleStates[allStates[state1].actualNextState(OPS[i]).hash]= allStates[state1].actualNextState(OPS[i]);
         for i in range(len(OPS)):
             if (allStates[state1].legalOp(OPS[i])):
                sum = 0
                reward = computeExpectedReward(allStates[state1], OPS[i])
-               for state2 in allStates.keys():
-                        sum = sum + (getProbSAS(state1=allStates[state1], state2=allStates[state2], action=OPS[i]) * statesvalue[state2][0])
+               for state2 in possibleStates.keys():
+                        sum = sum + (getProbSAS(state1=allStates[state1], state2=allStates[state2], action=OPS[i]) * statesValues[state2][0])
                reward += sum * GAMMA
                if(reward > maxExpectedReward):
                    maxActionPoicy = i
                    maxExpectedReward = reward
         policy[state1] = OPS[maxActionPoicy]
-        statesvalue[state1][1] = statesvalue[state1][0]
-        statesvalue[state1][0] = maxExpectedReward
+        statesValues[state1][1] = statesValues[state1][0]
+        statesValues[state1][0] = maxExpectedReward
     count = 0
     for state in allStates.keys():
-        if statesvalue[state][0] - statesvalue[state][1] >= EPSILON:
+        if statesValues[state][0] - statesValues[state][1] >= EPSILON:
             break
         else:
             count += 1
@@ -406,7 +410,6 @@ while True:
         break
 
 
-initialState = State()
 initialState = State()
 
 Show1.showRoom(room, policy, allStates, initialState, OPS, TRAN_PROB_MAT)
