@@ -19,12 +19,12 @@ POLICY = dict()
 NUM_OF_PICKED_FRUITS = 0
 root = tk.Tk()
 root.title("Brafman's Project")
-c = tk.Canvas(root, height=50 * (ROOM_HEIGHT + 3), width=50 * ROOM_WIDTH, bg='white', bd=0)
+c = tk.Canvas(root, height=50 * (ROOM_HEIGHT + 3), width= 50 * (ROOM_WIDTH+2), bg='white', bd=0)
 ROBOT_BAR = []
 BASKET_BAR = []
 FIRST_SHOW = True
 FINAL_STATE = ""
-
+RESET = False
 
 def showRoom(room, policy, allStates, initialState, operations, tranProbMat):
     global ROOM, INIT_ROOM, ROOM_HEIGHT, ROOM_WIDTH, OPS, TRAN_PROB_MAT, ALL_STATES, CURRENT_STATE, INIT_STATE, POLICY, c, FIRST_SHOW, FINAL_STATE
@@ -38,7 +38,7 @@ def showRoom(room, policy, allStates, initialState, operations, tranProbMat):
     INIT_STATE = copy.deepcopy(initialState)
     ALL_STATES = allStates
     POLICY = policy
-    c = tk.Canvas(root, height=50 * (ROOM_HEIGHT + 3), width=50 * ROOM_WIDTH, bg='white', bd=0)
+    c = tk.Canvas(root, height=50 * (ROOM_HEIGHT + 3), width=50 * (ROOM_WIDTH+2), bg='white', bd=0)
 
 
     # creating grid
@@ -114,13 +114,14 @@ def createImage(imageNum, row, col, c):
 
 def restart(event):
     print "Reseting game"
-    global ROOM, INIT_ROOM, CURRENT_STATE, INIT_STATE, OBJECT_IN_ROBOT_POSITION, ROBOT_BAR, BASKET_BAR, NUM_OF_PICKED_FRUITS
+    global ROOM, INIT_ROOM, CURRENT_STATE, INIT_STATE, OBJECT_IN_ROBOT_POSITION, ROBOT_BAR, BASKET_BAR, NUM_OF_PICKED_FRUITS, RESET
     ROOM = copy.deepcopy(INIT_ROOM)
     CURRENT_STATE = copy.deepcopy(INIT_STATE)
     OBJECT_IN_ROBOT_POSITION = 1
     ROBOT_BAR = []
     BASKET_BAR = []
     NUM_OF_PICKED_FRUITS = 0
+    RESET = True
     for i in range(ROOM_HEIGHT):
         for j in range(ROOM_WIDTH):
             if ROOM[i][j] == 0:
@@ -156,19 +157,23 @@ def takeNextMove():
             break
     if CURRENT_STATE.legalOp(OPS[realActionIndex]):
         executeAction(OPS[realActionIndex])
-        CURRENT_STATE = CURRENT_STATE.nextState(OPS[realActionIndex])
+        CURRENT_STATE = CURRENT_STATE.actualNextState(OPS[realActionIndex])
     return
 
 def playEpisode(event):
-    global CURRENT_STATE, POLICY, FINAL_STATE
+    global CURRENT_STATE, POLICY, FINAL_STATE, RESET
     while True:
-        c.update_idletasks()
+        if RESET == True:
+            RESET = False
+            break
         takeNextMove()
-        time.sleep(0.25)
-        if CURRENT_STATE.hash == FINAL_STATE:
+        c.update()
+        time.sleep(1)
+        if CURRENT_STATE.isEnd():
             break
 
 def executeAction(action):
+
     if action in ["up", "down", "left", "right"]:
         moveRobot(action, CURRENT_STATE.stateRoom[0][0], CURRENT_STATE.stateRoom[0][1])
     elif action in ["clean", "pick", "putInBasket"]:
