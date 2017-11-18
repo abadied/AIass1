@@ -324,6 +324,7 @@ def getAllStatesImpl(currentState, allStates):
                 if not newState.isEnd():
                     getAllStatesImpl(newState, allStates)
 
+
 def getAllStates():
     "building the data structure of all the states"
     currentState = State()
@@ -331,7 +332,9 @@ def getAllStates():
     allStates[currentState.hash] = currentState
     getAllStatesImpl(currentState, allStates)
     return allStates
+
 allStates = getAllStates()
+
 
 def computeReward(state, action):
     """this function computes the reward of doing an action in a specific state (given that the robot succeeded to make it, 
@@ -372,48 +375,133 @@ def computeExpectedReward(state, action):
 # TODO: finish implementing algorithms - policy iteration and value iteration
 # value iteration functions
 
+# initialize value function
+value_func = dict()
+for key in allStates.keys():
+    value_func[key] = None
+
+
 # returns an optimal value function with gama variable set to 0.9
-def value_iteration():
-    pass
+def value_iteration(epsilon, gamma):
+    policy = dict()
+    while True:
+        flag = True
+        for key in allStates.keys():
+            # if allStates[key] not in goal_states:
+            new_val, new_action_index = calc_value_and_action_for_curr_state(allStates[key], gamma)
+            if abs(get_state_value(key) - new_val) > epsilon:
+                set_state_value(key, new_val)
+                policy[key] = new_action_index
+                flag = False
+        if flag:
+            break
+
+        return policy
 
 
-# returns a proper policy according to giving value function
-def get_policy_from_value_function(value_func):
-    pass
+# return the current state value
+def get_state_value(key):
+    return value_func[key]
+
+
+# set the given state value to the better one
+def set_state_value(key, new_val):
+    value_func[key] = new_val
+
+
+# returns the best possible value and action index of a given state
+def calc_value_and_action_for_curr_state(state, gamma):
+    max_value = 0
+    best_action_index = None
+
+    for i in range(len(OPS)):
+        if state.legalOp(OPS[i]):
+            action_reward = computeExpectedReward(state, OPS[i])
+            sigma_param = 0
+            for next_state_key in allStates.keys():
+                next_state = allStates[next_state_key]
+                sigma_param += getProbSAS(state, next_state, OPS[i])*value_func[next_state_key]
+            curr_reward = action_reward + gamma*sigma_param
+            max_value = max(max_value, curr_reward)
+            if max_value == curr_reward:
+                best_action_index = i
+
+    return max_value, best_action_index
 
 
 # policy iteration functions
 
 
-#  returns an optimal policy with gama var set to 0.9
-def policy_iteration():
-    pass
+#  returns an optimal policy with gamma var set to 0.9
+# TODO: finish and check correctness - separate to different functions
+def policy_iteration(epsilon, gamma):
+    local_policy = get_random_policy()
+    local_value_function = get_value_function()
+    new_policy = local_policy
+    while True:
+        new_policy = new_policy # duplicate twice when initiate
+        change = False
+        for state_key in allStates.keys():
+            state = allStates[state_key]
+            value_per_action_list = list()
+            for op in OPS:
+                if allStates[state_key].legalOp():
+                    action_reward = computeExpectedReward(state, OPS[i])
+                    sigma_param = 0
+                    for next_state_key in allStates.keys():
+                        next_state = allStates[next_state_key]
+                        sigma_param += getProbSAS(state, next_state, OPS[i]) * value_func[next_state_key]
+                    curr_reward = action_reward + gamma * sigma_param
+                    value_per_action_list.append((op, curr_reward))
+            value_per_action_list.sort(key=lambda tup: tup[1]) # TODO: check correctness of sort
+            if value_per_action_list[0][1] < local_value_function[state_key]:
+                new_policy[state_key] = value_per_action_list[0][0]
+                change = True
+        if change:
+            local_policy = new_policy
+        else:
+            break
+    return local_policy
 
+
+# TODO: complete
+def get_value_function():
+    for state_key in allStates.keys():
+        for op in OPS:
+            if allStates[state_key].legalOp():
+                pass
 
 # general function for both algorithms
 
 
-# returns the value of a given state
-def calc_value_for_curr_state(state):
-    pass
-
-
 # create the initial policy
-def get_init_policy():
-    pass
+def get_policy():
+    algo_type = raw_input('for value iteration press \'v\', for policy iteration press \'p\'')
+    if algo_type == 'p':
+        return value_iteration()
+    elif algo_type == 'v':
+        return policy_iteration()
+    else:
+        raise ValueError('unknown planner')
+
+
+def get_random_policy():
+    policy = dict()
+    for key in allStates.keys():
+        num = -1
+        while num == -1:
+            num = random.randint(0, len(OPS) - 1)
+            if OPS[num] in ["random", "pick", "putInBasket", "idle", "clean"]:
+                num = -1
+        policy[key] = OPS[num]
+        if allStates[key].isEnd():
+            policy[key] = "idle"
+    return policy
+
 
 # TODO: when finished, remove initial poilicy
 # initial policy
-policy = dict()
-for key in allStates.keys():
-    num = -1
-    while num == -1:
-        num = random.randint(0, len(OPS) - 1)
-        if OPS[num] in ["random", "pick", "putInBasket", "idle", "clean"]:
-            num = -1
-    policy[key] = OPS[num]
-    if allStates[key].isEnd():
-        policy[key] = "idle"
+policy = get_policy()
 
 initialState = State()
 
