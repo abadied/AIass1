@@ -455,34 +455,30 @@ def get_possible_states(state, defined_action=None):
 #  returns an optimal policy with gamma var set to 0.9
 # TODO: finish and check correctness - separate to different functions
 def policy_iteration(epsilon, gamma):
-    local_policy = get_random_policy()
-    local_value_function = get_value_function(local_policy, gamma)
-    new_policy = local_policy
-    while True:
-        new_policy = new_policy # duplicate twice when initiate
-        change = False
-        for state_key in allStates.keys():
-            state = allStates[state_key]
-            value_per_action_list = list()
-            for op in OPS:
-                if allStates[state_key].legalOp(op):
-                    action_reward = computeExpectedReward(state, op)
-                    sigma_param = 0
-                    for next_state_key in allStates.keys():
-                        next_state = allStates[next_state_key]
-                        sigma_param += getProbSAS(state, next_state, op) * local_value_function[next_state_key]
-                    curr_reward = action_reward + gamma * sigma_param
-                    value_per_action_list.append((op, curr_reward))
-            value_per_action_list.sort(key=lambda tup: tup[1]) # TODO: check correctness of sort
-            if value_per_action_list[0][1] > local_value_function[state_key]:
-                new_policy[state_key] = value_per_action_list[0][0]
-                change = True
-        if change:
-            local_policy = new_policy
-            local_value_function = get_value_function(local_policy, gamma)
-        else:
-            break
-    return local_policy
+	local_policy = get_random_policy()
+	local_value_function = get_value_function(local_policy, gamma)
+	while True:
+		change = False
+		for state_key in allStates.keys():
+			state = allStates[state_key]
+			value_per_action_list = list()
+			for op in OPS:
+				if state.legalOp(op):
+					action_reward = computeExpectedReward(state, op)
+					sigma_param = 0
+					for next_state_key in allStates.keys():
+						next_state = allStates[next_state_key]
+						sigma_param += getProbSAS(state, next_state, op) * local_value_function[next_state_key]
+					curr_reward = action_reward + gamma * sigma_param
+					value_per_action_list.append((op, curr_reward))
+			value_per_action_list.sort(key=lambda tup: tup[1]) # TODO: check correctness of sort
+			if value_per_action_list[-1][1] > local_value_function[state_key]:
+				local_policy[state_key] = value_per_action_list[-1][0]
+				change = True
+				local_value_function = get_value_function(local_policy, gamma)
+		if not change:
+			break
+	return local_policy
 
 
 # TODO: complete
@@ -501,7 +497,7 @@ def get_value_function(_policy, gamma):
                 possible_states = get_possible_states(curr_state)
                 for next_state_key in possible_states.keys():
                     next_state = allStates[next_state_key]
-                    sigma_param += getProbSAS(curr_state, next_state, action) * value_func[next_state_key]
+                    sigma_param += getProbSAS(curr_state, next_state, action) * _value_func[next_state_key]
                 curr_reward = action_reward + gamma * sigma_param
                 if _value_func[state_key] != curr_reward:
                     _value_func[state_key] = curr_reward
