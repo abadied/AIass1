@@ -313,7 +313,7 @@ class State:
             return True
         return False
 
-def getAllStatesImpl(currentState, allStates):
+def getAllStatesImpl(currentState, allStates, value_func):
     "a recursive function to build the data structure allStates"
     global FINAL_STATE
     for i in OPS:
@@ -321,19 +321,22 @@ def getAllStatesImpl(currentState, allStates):
             newState = currentState.actualNextState(i)
             if newState.hash not in allStates.keys():  # maybe it's better to use hash function in order to construct allStates
                 allStates[newState.hash] = newState
+                value_func[newState.hash] = 0
                 if not newState.isEnd():
-                    getAllStatesImpl(newState, allStates)
+                    getAllStatesImpl(newState, allStates, value_func)
 
 
 def getAllStates():
     "building the data structure of all the states"
     currentState = State()
     allStates = dict()
+    value_func = dict()
     allStates[currentState.hash] = currentState
-    getAllStatesImpl(currentState, allStates)
-    return allStates
+    value_func[currentState.hash] = 0
+    getAllStatesImpl(currentState, allStates, value_func)
+    return allStates, value_func
 
-allStates = getAllStates()
+allStates, value_func = getAllStates()
 
 
 def computeReward(state, action):
@@ -376,27 +379,28 @@ def computeExpectedReward(state, action):
 # value iteration functions
 
 # initialize value function
-value_func = dict()
-for key in allStates.keys():
-    value_func[key] = None
+# value_func = dict()
+# for key in allStates.keys():
+#     value_func[key] = 0
 
 
 # returns an optimal value function with gama variable set to 0.9
 def value_iteration(epsilon, gamma):
-    policy = dict()
+    _policy = dict()
     while True:
         flag = True
         for key in allStates.keys():
             # if allStates[key] not in goal_states:
             new_val, new_action_index = calc_value_and_action_for_curr_state(allStates[key], gamma)
-            if abs(get_state_value(key) - new_val) > epsilon:
+
+            if abs(get_state_value(key) - new_val) >= epsilon:
                 set_state_value(key, new_val)
-                policy[key] = new_action_index
+                _policy[key] = OPS[new_action_index]
                 flag = False
         if flag:
             break
 
-        return policy
+    return _policy
 
 
 # return the current state value
@@ -411,16 +415,18 @@ def set_state_value(key, new_val):
 
 # returns the best possible value and action index of a given state
 def calc_value_and_action_for_curr_state(state, gamma):
-    max_value = 0
+    max_value = -1000
     best_action_index = None
-
+    possible_states = get_possible_states(state)
     for i in range(len(OPS)):
         if state.legalOp(OPS[i]):
             action_reward = computeExpectedReward(state, OPS[i])
             sigma_param = 0
-            for next_state_key in allStates.keys():
+
+            for next_state_key in possible_states.keys():
                 next_state = allStates[next_state_key]
                 sigma_param += getProbSAS(state, next_state, OPS[i])*value_func[next_state_key]
+
             curr_reward = action_reward + gamma*sigma_param
             max_value = max(max_value, curr_reward)
             if max_value == curr_reward:
@@ -429,6 +435,15 @@ def calc_value_and_action_for_curr_state(state, gamma):
     return max_value, best_action_index
 
 
+# returns possible states test
+def get_possible_states(state):
+    possible_states = dict()
+    for op in OPS:
+        if state.legalOp(op):
+            _next_state = state.actualNextState(op)
+            possible_states[_next_state.hash] = _next_state
+    return possible_states
+
 # policy iteration functions
 
 
@@ -436,7 +451,7 @@ def calc_value_and_action_for_curr_state(state, gamma):
 # TODO: finish and check correctness - separate to different functions
 def policy_iteration(epsilon, gamma):
     local_policy = get_random_policy()
-    local_value_function = get_value_function()
+    local_value_function = get_value_function(local_policy)
     new_policy = local_policy
     while True:
         new_policy = new_policy # duplicate twice when initiate
@@ -465,7 +480,7 @@ def policy_iteration(epsilon, gamma):
 
 
 # TODO: complete
-def get_value_function():
+def get_value_function(_policy):
     for state_key in allStates.keys():
         for op in OPS:
             if allStates[state_key].legalOp():
@@ -476,11 +491,11 @@ def get_value_function():
 
 # create the initial policy
 def get_policy():
-    algo_type = raw_input('for value iteration press \'v\', for policy iteration press \'p\'')
-    if algo_type == 'p':
-        return value_iteration()
-    elif algo_type == 'v':
-        return policy_iteration()
+    algo_type = raw_input('for value iteration press \'v\', for policy iteration press \'p\': ')
+    if algo_type == 'v':
+        return value_iteration(0.9, 0.9)
+    elif algo_type == 'p':
+        return policy_iteration(0.9, 0.9)
     else:
         raise ValueError('unknown planner')
 
@@ -499,8 +514,9 @@ def get_random_policy():
     return policy
 
 
-# TODO: when finished, remove initial poilicy
+# TODO: when finished, remove initial policy
 # initial policy
+# policy = get_random_policy()
 policy = get_policy()
 
 initialState = State()
