@@ -470,7 +470,7 @@ def policy_iteration(epsilon, gamma):
                     sigma_param = 0
                     for next_state_key in allStates.keys():
                         next_state = allStates[next_state_key]
-                        sigma_param += getProbSAS(state, next_state, op) * value_func[next_state_key]
+                        sigma_param += getProbSAS(state, next_state, op) * local_value_function[next_state_key]
                     curr_reward = action_reward + gamma * sigma_param
                     value_per_action_list.append((op, curr_reward))
             value_per_action_list.sort(key=lambda tup: tup[1]) # TODO: check correctness of sort
@@ -501,7 +501,7 @@ def get_value_function(_policy, gamma):
                 possible_states = get_possible_states(curr_state)
                 for next_state_key in possible_states.keys():
                     next_state = allStates[next_state_key]
-                    sigma_param += getProbSAS(curr_state, next_state, OPS[i]) * value_func[next_state_key]
+                    sigma_param += getProbSAS(curr_state, next_state, action) * value_func[next_state_key]
                 curr_reward = action_reward + gamma * sigma_param
                 if _value_func[state_key] != curr_reward:
                     _value_func[state_key] = curr_reward
