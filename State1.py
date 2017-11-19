@@ -436,11 +436,16 @@ def calc_value_and_action_for_curr_state(state, gamma):
 
 
 # returns possible states test
-def get_possible_states(state):
+def get_possible_states(state, defined_action=None):
     possible_states = dict()
-    for op in OPS:
-        if state.legalOp(op):
-            _next_state = state.actualNextState(op)
+    if defined_action is None:
+        for op in OPS:
+            if state.legalOp(op):
+                _next_state = state.actualNextState(op)
+                possible_states[_next_state.hash] = _next_state
+    else:
+        if state.legalOp(defined_action):
+            _next_state = state.actualNextState(defined_action)
             possible_states[_next_state.hash] = _next_state
     return possible_states
 
@@ -451,7 +456,7 @@ def get_possible_states(state):
 # TODO: finish and check correctness - separate to different functions
 def policy_iteration(epsilon, gamma):
     local_policy = get_random_policy()
-    local_value_function = get_value_function(local_policy)
+    local_value_function = get_value_function(local_policy, gamma)
     new_policy = local_policy
     while True:
         new_policy = new_policy # duplicate twice when initiate
@@ -460,31 +465,50 @@ def policy_iteration(epsilon, gamma):
             state = allStates[state_key]
             value_per_action_list = list()
             for op in OPS:
-                if allStates[state_key].legalOp():
-                    action_reward = computeExpectedReward(state, OPS[i])
+                if allStates[state_key].legalOp(op):
+                    action_reward = computeExpectedReward(state, op)
                     sigma_param = 0
                     for next_state_key in allStates.keys():
                         next_state = allStates[next_state_key]
-                        sigma_param += getProbSAS(state, next_state, OPS[i]) * value_func[next_state_key]
+                        sigma_param += getProbSAS(state, next_state, op) * value_func[next_state_key]
                     curr_reward = action_reward + gamma * sigma_param
                     value_per_action_list.append((op, curr_reward))
             value_per_action_list.sort(key=lambda tup: tup[1]) # TODO: check correctness of sort
-            if value_per_action_list[0][1] < local_value_function[state_key]:
+            if value_per_action_list[0][1] > local_value_function[state_key]:
                 new_policy[state_key] = value_per_action_list[0][0]
                 change = True
         if change:
             local_policy = new_policy
+            local_value_function = get_value_function(local_policy, gamma)
         else:
             break
     return local_policy
 
 
 # TODO: complete
-def get_value_function(_policy):
-    for state_key in allStates.keys():
-        for op in OPS:
-            if allStates[state_key].legalOp():
-                pass
+def get_value_function(_policy, gamma):
+    _value_func = dict()
+    for key in allStates.keys():
+        _value_func[key] = 0
+    while True:
+        changed = False
+        for state_key in allStates.keys():
+            curr_state = allStates[state_key]
+            action = _policy[state_key]
+            if curr_state.legalOp(action):
+                sigma_param = 0
+                action_reward = computeExpectedReward(curr_state, action)
+                possible_states = get_possible_states(curr_state)
+                for next_state_key in possible_states.keys():
+                    next_state = allStates[next_state_key]
+                    sigma_param += getProbSAS(curr_state, next_state, OPS[i]) * value_func[next_state_key]
+                curr_reward = action_reward + gamma * sigma_param
+                if _value_func[state_key] != curr_reward:
+                    _value_func[state_key] = curr_reward
+                    changed = True
+        if not changed:
+            break
+    return _value_func
 
 # general function for both algorithms
 
