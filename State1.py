@@ -375,13 +375,7 @@ def computeExpectedReward(state, action):
     return reward
 
 
-# TODO: finish implementing algorithms - policy iteration and value iteration
 # value iteration functions
-
-# initialize value function
-# value_func = dict()
-# for key in allStates.keys():
-#     value_func[key] = 0
 
 
 # returns an optimal value function with gama variable set to 0.9
@@ -443,7 +437,6 @@ def get_possible_states(state, defined_action=None):
 
 
 #  returns an optimal policy with gamma var set to 0.9
-# TODO: finish and check correctness - separate to different functions
 def policy_iteration(gamma):
     local_policy = get_random_policy()
     while True:
@@ -455,7 +448,7 @@ def policy_iteration(gamma):
             max_change = -1000
             max_op = None
             for op in OPS:
-                if state.legalOp(op) and not change:
+                if state.legalOp(op):
                     action_reward = computeExpectedReward(state, op)
                     sigma_param = 0
                     for next_state_key in possible_states.keys():
@@ -470,7 +463,6 @@ def policy_iteration(gamma):
             if max_change > 0:
                 local_policy[state_key] = max_op
                 change = True
-                # break
 
         if not change:
             break
