@@ -506,7 +506,7 @@ def get_value_function(_policy, gamma, _value_func=None):
 
 # create the initial policy
 def get_policy():
-    algo_type = raw_input('for value iteration press \'v\', for policy iteration press \'p\': ')
+    algo_type = raw_input('For Value Iteration press \'v\', For Policy Iteration press \'p\': ')
     if algo_type == 'v':
         return value_iteration(0.01, 0.9)
     elif algo_type == 'p':
