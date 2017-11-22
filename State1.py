@@ -337,7 +337,10 @@ def getAllStates():
     return allStates, value_func
 
 allStates, value_func = getAllStates()
-
+# for key in value_func.keys():
+#     state = allStates[key]
+#     if state.end:
+#         value_func[key] = 10
 
 def computeReward(state, action):
     """this function computes the reward of doing an action in a specific state (given that the robot succeeded to make it, 
@@ -384,7 +387,6 @@ def value_iteration(epsilon, gamma):
     while True:
         flag = True
         for key in allStates.keys():
-            # if allStates[key] not in goal_states:
             new_val, new_action_index = calc_value_and_action_for_curr_state(allStates[key], gamma)
 
             if abs(value_func[key] - new_val) >= epsilon:
@@ -448,7 +450,7 @@ def policy_iteration(gamma):
             max_change = -1000
             max_op = None
             for op in OPS:
-                if state.legalOp(op):
+                if op != local_policy[state_key] and state.legalOp(op):
                     action_reward = computeExpectedReward(state, op)
                     sigma_param = 0
                     for next_state_key in possible_states.keys():
@@ -469,11 +471,15 @@ def policy_iteration(gamma):
     return local_policy
 
 
-# TODO: complete
 def get_value_function(_policy, gamma, _value_func=None):
     if _value_func is None:
         _value_func = dict()
         for key in allStates.keys():
+            # TODO: check how to improve initial value function
+            # curr_state = allStates[key]
+            # if len(curr_state.stateRoom[0]) == 0 and len(curr_state.stateRoom[1]) == 0:
+            #     _value_func[key] = 10
+            # else:
             _value_func[key] = 0
 
     while True:
@@ -513,15 +519,17 @@ def get_random_policy():
     policy = dict()
     for key in allStates.keys():
         for op in OPS:
-            if allStates[key].legalOp(op):
-                policy[key] = op
+            curr_state = allStates[key]
+            if curr_state.legalOp(op):
+                if curr_state.end:
+                    policy[key] = 'idle'
+                else:
+                    policy[key] = op
                 break
     return policy
 
 
-# TODO: when finished, remove initial policy
 # initial policy
-# policy = get_random_policy()
 policy = get_policy()
 
 initialState = State()
