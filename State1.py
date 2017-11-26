@@ -313,10 +313,6 @@ class State:
             return True
         return False
 
-    # new function- returns the numbers of fruits and stains
-    def get_num_of_stains_and_fruits(self):
-        return int(len(self.stateRoom[1]) + len(self.stateRoom[2]))
-
 
 def getAllStatesImpl(currentState, allStates, value_func):
     "a recursive function to build the data structure allStates"
@@ -389,17 +385,10 @@ def computeExpectedReward(state, action):
 # returns an optimal value function with gama variable set to 0.9
 def value_iteration(epsilon, gamma):
     _policy = dict()
-    # TODO: check if new all states list is improving efficacy
-    all_states_list = []
-    for key in allStates.keys():
-        all_states_list.append((key, allStates[key]))
-    all_states_list.sort(key=lambda t: t[1].get_num_of_stains_and_fruits, reverse=True)
 
     while True:
         flag = True
-        # for key in allStates.keys():
-        for _tup in all_states_list:
-            key = _tup[0]
+        for key in allStates.keys():
             new_val, new_action_index = calc_value_and_action_for_curr_state(allStates[key], gamma)
 
             if abs(value_func[key] - new_val) >= epsilon:
@@ -414,24 +403,25 @@ def value_iteration(epsilon, gamma):
 
 # returns the best possible value and action index of a given state
 def calc_value_and_action_for_curr_state(state, gamma):
-    max_value = -1000
-    best_action_index = None
-    possible_states = get_possible_states(state)
-    for i in range(len(OPS)):
-        if state.legalOp(OPS[i]):
-            action_reward = computeExpectedReward(state, OPS[i])
-            sigma_param = 0
+	max_value = -1000
+	best_action_index = None
+	for i in range(len(OPS)):
+		if state.legalOp(OPS[i]):
+			possible_states = get_possible_states(state, OPS[i])
 
-            for next_state_key in possible_states.keys():
-                next_state = allStates[next_state_key]
-                sigma_param += getProbSAS(state, next_state, OPS[i])*value_func[next_state_key]
+			action_reward = computeExpectedReward(state, OPS[i])
+			sigma_param = 0
 
-            curr_reward = action_reward + gamma*sigma_param
-            max_value = max(max_value, curr_reward)
-            if max_value == curr_reward:
-                best_action_index = i
+			for next_state_key in possible_states.keys():
+				next_state = allStates[next_state_key]
+				sigma_param += getProbSAS(state, next_state, OPS[i])*value_func[next_state_key]
 
-    return max_value, best_action_index
+			curr_reward = action_reward + gamma*sigma_param
+			max_value = max(max_value, curr_reward)
+			if max_value == curr_reward:
+				best_action_index = i
+
+	return max_value, best_action_index
 
 
 # returns possible states test
@@ -453,35 +443,36 @@ def get_possible_states(state, defined_action=None):
 
 #  returns an optimal policy with gamma var set to 0.9
 def policy_iteration(gamma):
-    local_policy = get_random_policy()
-    while True:
-        change = False
-        local_value_function = get_value_function(local_policy, gamma)
-        for state_key in allStates.keys():
-            state = allStates[state_key]
-            possible_states = get_possible_states(state)
-            max_change = -1000
-            max_op = None
-            for op in OPS:
-                if op != local_policy[state_key] and state.legalOp(op):
-                    action_reward = computeExpectedReward(state, op)
-                    sigma_param = 0
-                    for next_state_key in possible_states.keys():
-                        next_state = allStates[next_state_key]
-                        sigma_param += getProbSAS(state, next_state, op) * local_value_function[next_state_key]
-                    curr_reward = action_reward + gamma * sigma_param
-                    curr_change = curr_reward - local_value_function[state_key]
-                    if curr_change > max_change:
-                        max_change = curr_change
-                        max_op = op
+	local_policy = get_random_policy()
+	while True:
+		change = False
+		local_value_function = get_value_function(local_policy, gamma)
+		for state_key in allStates.keys():
+			state = allStates[state_key]
+			# possible_states = get_possible_states(state)
+			max_change = -1000
+			max_op = None
+			for op in OPS:
+				if op != local_policy[state_key] and state.legalOp(op):
+					possible_states = get_possible_states(state, op)
+					action_reward = computeExpectedReward(state, op)
+					sigma_param = 0
+					for next_state_key in possible_states.keys():
+						next_state = allStates[next_state_key]
+						sigma_param += getProbSAS(state, next_state, op) * local_value_function[next_state_key]
+					curr_reward = action_reward + gamma * sigma_param
+					curr_change = curr_reward - local_value_function[state_key]
+					if curr_change > max_change:
+						max_change = curr_change
+						max_op = op
 
-            if max_change > 0:
-                local_policy[state_key] = max_op
-                change = True
+			if max_change > 0:
+				local_policy[state_key] = max_op
+				change = True
 
-        if not change:
-            break
-    return local_policy
+		if not change:
+			break
+	return local_policy
 
 
 def get_value_function(_policy, gamma, _value_func=None):
@@ -502,7 +493,7 @@ def get_value_function(_policy, gamma, _value_func=None):
             action = _policy[state_key]
             sigma_param = 0
             action_reward = computeExpectedReward(curr_state, action)
-            possible_states = get_possible_states(curr_state)
+            possible_states = get_possible_states(curr_state,action)
             for next_state_key in possible_states.keys():
                 next_state = allStates[next_state_key]
                 sigma_param += getProbSAS(curr_state, next_state, action) * _value_func[next_state_key]
