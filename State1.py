@@ -313,6 +313,11 @@ class State:
             return True
         return False
 
+    # new function- returns the numbers of fruits and stains
+    def get_num_of_stains_and_fruits(self):
+        return int(len(self.stateRoom[1]) + len(self.stateRoom[2]))
+
+
 def getAllStatesImpl(currentState, allStates, value_func):
     "a recursive function to build the data structure allStates"
     global FINAL_STATE
@@ -384,9 +389,17 @@ def computeExpectedReward(state, action):
 # returns an optimal value function with gama variable set to 0.9
 def value_iteration(epsilon, gamma):
     _policy = dict()
+    # TODO: check if new all states list is improving efficacy
+    all_states_list = []
+    for key in allStates.keys():
+        all_states_list.append((key, allStates[key]))
+    all_states_list.sort(key=lambda t: t[1].get_num_of_stains_and_fruits, reverse=True)
+
     while True:
         flag = True
-        for key in allStates.keys():
+        # for key in allStates.keys():
+        for _tup in all_states_list:
+            key = _tup[0]
             new_val, new_action_index = calc_value_and_action_for_curr_state(allStates[key], gamma)
 
             if abs(value_func[key] - new_val) >= epsilon:
