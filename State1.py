@@ -464,7 +464,6 @@ def policy_iteration(gamma):
                         max_op = op
 
             if max_change > 0:
-                print(state_key, max_op)
                 local_policy[state_key] = max_op
                 change = True
         if not change:
