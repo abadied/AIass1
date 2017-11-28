@@ -32,7 +32,7 @@ PICKING_CREDIT = 5.
 PUTTING_CREDIT = 20.
 MOVE_COST = 1.
 GAMMA = 0.9 # discount factor
-EPSILON = 0.01
+
 # the i-j cell in the transition probability matrix indicates the probability to do action j given that the chosen action is i
 # the matrix is ordered according to the order in the variable OPS
 TRAN_PROB_MAT = [[0.8, 0, 0.1, 0.1, 0, 0, 0, 0, 0],
@@ -54,7 +54,6 @@ def initRoom():
         for j in range(1, roomWidth - 1):
             room[i][j] = 1
     # Obstacles might be added by putting '0' in the requested cell in the variable room.
-
 
     room[ROBOT_POSITION[0]][ROBOT_POSITION[1]] = 9  # initializing robot's location
     room[BASKET_POSITION[0]][BASKET_POSITION[1]] = 2  # initializing basket's location
@@ -314,8 +313,7 @@ class State:
             return True
         return False
 
-
-def getAllStatesImpl(currentState, allStates, statesvalus):
+def getAllStatesImpl(currentState, allStates, value_func):
     "a recursive function to build the data structure allStates"
     global FINAL_STATE
     for i in OPS:
@@ -323,24 +321,26 @@ def getAllStatesImpl(currentState, allStates, statesvalus):
             newState = currentState.actualNextState(i)
             if newState.hash not in allStates.keys():  # maybe it's better to use hash function in order to construct allStates
                 allStates[newState.hash] = newState
-                statesvalus[newState.hash] = [0, 0];
+                value_func[newState.hash] = 0
                 if not newState.isEnd():
-                    getAllStatesImpl(newState, allStates, statesvalus)
+                    getAllStatesImpl(newState, allStates, value_func)
 
 
 def getAllStates():
     "building the data structure of all the states"
     currentState = State()
-    allStates = {}
-    statesvalus = {}
+    allStates = dict()
+    value_func = dict()
     allStates[currentState.hash] = currentState
-    statesvalus[currentState.hash] = [0,0]
-    getAllStatesImpl(currentState, allStates,statesvalus)
-    return allStates, statesvalus
+    value_func[currentState.hash] = 0
+    getAllStatesImpl(currentState, allStates, value_func)
+    return allStates, value_func
 
-
-allStates, statesValues = getAllStates()
-
+allStates, value_func = getAllStates()
+# for key in value_func.keys():
+#     state = allStates[key]
+#     if state.end:
+#         value_func[key] = 10
 
 def computeReward(state, action):
     """this function computes the reward of doing an action in a specific state (given that the robot succeeded to make it,
@@ -352,13 +352,6 @@ def computeReward(state, action):
     elif action == "putInBasket":
         return PUTTING_CREDIT * state.stateRoom[3] - MOVE_COST
     return - MOVE_COST
-def computeExpectedReward(state, action):
-    """given a state and an action that the robot tried to do (and not necessarily succeeded), returns the expectation of the received reward trying this action"""
-    reward = 0
-    for op in OPS:
-        opProb = TRAN_PROB_MAT[OPS.index(action)][OPS.index(op)]
-        reward += opProb * computeReward(state, op)
-    return reward
 
 def getProbSAS(state1, state2, action):
     """"given state1 and action, returns the probability to reach state2
@@ -374,41 +367,202 @@ def getProbSAS(state1, state2, action):
             sum += TRAN_PROB_MAT[actionIndex][numOp]
     return sum
 
-# initial policy
+
+def computeExpectedReward(state, action):
+    """given a state and an action that the robot tried to do (and not necessarily succeeded),
+     returns the expectation of the received reward trying this action"""
+    reward = 0
+    for op in OPS:
+        opProb = TRAN_PROB_MAT[OPS.index(action)][OPS.index(op)]
+        reward += opProb * computeReward(state, op)
+    return reward
 
 
-policy = dict()
-tem = 0
-while True:
-    for state1 in allStates.keys():
-        maxExpectedReward = -100000
-        reward = 0
-        possibleStates = {}
-        for i in range(len(OPS)):
-            if (allStates[state1].legalOp(OPS[i])):
-                possibleStates[allStates[state1].actualNextState(OPS[i]).hash]= allStates[state1].actualNextState(OPS[i]);
-        for i in range(len(OPS)):
-            if (allStates[state1].legalOp(OPS[i])):
-               sum = 0
-               reward = computeExpectedReward(allStates[state1], OPS[i])
-               for state2 in possibleStates.keys():
-                        sum = sum + (getProbSAS(state1=allStates[state1], state2=allStates[state2], action=OPS[i]) * statesValues[state2][0])
-               reward += sum * GAMMA
-               if(reward > maxExpectedReward):
-                   maxActionPoicy = i
-                   maxExpectedReward = reward
-        policy[state1] = OPS[maxActionPoicy]
-        statesValues[state1][1] = statesValues[state1][0]
-        statesValues[state1][0] = maxExpectedReward
-    count = 0
-    for state in allStates.keys():
-        if statesValues[state][0] - statesValues[state][1] >= EPSILON:
+# value iteration functions
+
+
+# returns an optimal value function with gama variable set to 0.9
+def value_iteration(epsilon, gamma):
+    _policy = dict()
+    while True:
+        flag = True
+        for key in allStates.keys():
+            new_val, new_action_index = calc_value_and_action_for_curr_state(allStates[key], gamma)
+
+            if abs(value_func[key] - new_val) >= epsilon:
+                value_func[key] = new_val
+                _policy[key] = OPS[new_action_index]
+                flag = False
+        if flag:
             break
-        else:
-            count += 1
-    if count ==len(allStates.keys()):
-        break
 
+    return _policy
+
+
+# returns the best possible value and action index of a given state
+def calc_value_and_action_for_curr_state(state, gamma):
+    max_value = -1000
+    best_action_index = None
+    possible_states = get_possible_states(state)
+    for i in range(len(OPS)):
+        if state.legalOp(OPS[i]):
+            action_reward = computeExpectedReward(state, OPS[i])
+            sigma_param = 0
+
+            for next_state_key in possible_states.keys():
+                next_state = allStates[next_state_key]
+                sigma_param += getProbSAS(state, next_state, OPS[i])*value_func[next_state_key]
+
+            curr_reward = action_reward + gamma*sigma_param
+            max_value = max(max_value, curr_reward)
+            if max_value == curr_reward:
+                best_action_index = i
+
+    return max_value, best_action_index
+
+
+# returns possible states test
+def get_possible_states(state, defined_action=None):
+    possible_states = dict()
+    if defined_action is None:
+        for op in OPS:
+            if state.legalOp(op):
+                _next_state = state.actualNextState(op)
+                possible_states[_next_state.hash] = _next_state
+    else:
+        if state.legalOp(defined_action):
+            _next_state = state.actualNextState(defined_action)
+            possible_states[_next_state.hash] = _next_state
+    return possible_states
+
+# policy iteration functions
+
+
+#  returns an optimal policy with gamma var set to 0.9
+def policy_iteration(gamma):
+    local_policy = get_random_policy()
+    local_value_function = None
+    while True:
+        change = False
+        local_value_function = get_value_function(local_policy, gamma,local_value_function)
+        for state_key in allStates.keys():
+            state = allStates[state_key]
+            possible_states = get_possible_states(state)
+            max_change = 0
+            max_op = None
+            for op in OPS:
+                if op != local_policy[state_key] and state.legalOp(op):
+                    action_reward = computeExpectedReward(state, op)
+                    sigma_param = 0
+                    for next_state_key in possible_states.keys():
+                        next_state = allStates[next_state_key]
+                        sigma_param += getProbSAS(state, next_state, op) * local_value_function[next_state_key]
+                    curr_reward = action_reward + gamma * sigma_param
+                    curr_change = curr_reward - local_value_function[state_key]
+                    if curr_change > max_change:
+                        max_change = curr_change
+                        max_op = op
+
+            if max_change > 0:
+                print(state_key, max_op)
+                local_policy[state_key] = max_op
+                change = True
+        if not change:
+            break
+    return local_policy
+
+
+def get_value_function(_policy, gamma, _value_func=None):
+    if _value_func is None:
+        _value_func = dict()
+        for key in allStates.keys():
+            # TODO: check how to improve initial value function
+             curr_state = allStates[key]
+             if len(curr_state.stateRoom[2]) == 0 and len(curr_state.stateRoom[1]) == 0 and (curr_state.stateRoom[3] == 0):
+                 _value_func[key] = 10
+             elif len(curr_state.stateRoom[1])==0:
+                 _value_func[key] = 0
+             elif len(curr_state.stateRoom[2])==0:
+                 _value_func[key] = 0
+             else:
+                _value_func[key] = 0
+    for i in range (0,1):
+    #while True:
+        changed = False
+        for state_key in allStates.keys():
+            curr_state = allStates[state_key]
+            action = _policy[state_key]
+            sigma_param = 0
+            action_reward = computeExpectedReward(curr_state, action)
+            possible_states = get_possible_states(curr_state)
+            for next_state_key in possible_states.keys():
+                next_state = allStates[next_state_key]
+                sigma_param += getProbSAS(curr_state, next_state, action) * _value_func[next_state_key]
+            curr_reward = action_reward + gamma * sigma_param
+            if _value_func[state_key] != curr_reward:
+                _value_func[state_key] = curr_reward
+                changed = True
+        if not changed:
+            break
+    return _value_func
+
+# general function for both algorithms
+
+
+# create the initial policy
+def get_policy():
+    algo_type = raw_input('For Value Iteration press \'v\', For Policy Iteration press \'p\': ')
+    if algo_type == 'v':
+        return value_iteration(0.01, 0.9)
+    elif algo_type == 'p':
+        return policy_iteration(0.9)
+    else:
+        raise ValueError('unknown planner')
+
+def getAction(x,y,i,j):
+    if(x>i):
+        return "up"
+    elif (x<j):
+        return "down"
+    elif (y>j):
+        return "left"
+    else:
+        return "right"
+
+def get_random_policy():
+    policy = dict()
+    for key in allStates.keys():
+        curr_state = allStates[key]
+        if(curr_state.stateRoom[0] in curr_state.stateRoom[1]):
+            policy[key] = "pick"
+        elif (curr_state.stateRoom[0] in curr_state.stateRoom[2]):
+            policy[key] = "clean"
+        elif (curr_state.legalOp("putInBasket") and (curr_state.stateRoom[3]) > 0):
+            policy[key] = "putInBasket"
+        elif(len (curr_state.stateRoom[1]) == 0 and len (curr_state.stateRoom[2]) == 0 and (curr_state.stateRoom[3]==0)):
+            policy[key] = "idle"
+        elif (len(curr_state.stateRoom[1])>0):
+            policy[key] = getAction(curr_state.stateRoom[0][0],curr_state.stateRoom[0][1],curr_state.stateRoom[1][0][0],curr_state.stateRoom[1][0][1])
+        elif (len(curr_state.stateRoom[2])>0):
+            policy[key] = getAction(curr_state.stateRoom[0][0],curr_state.stateRoom[0][1],curr_state.stateRoom[2][0][0],curr_state.stateRoom[2][0][1])
+        else:
+            policy[key] = getAction(curr_state.stateRoom[0][0],curr_state.stateRoom[0][1],BASKET_POSITION[0],BASKET_POSITION[1])
+
+
+
+     #   for op in OPS:
+     #       curr_state = allStates[key]
+     #       if curr_state.legalOp(op):
+     #           if curr_state.end:
+     #               policy[key] = 'idle'
+     #           else:
+     #               policy[key] = op
+     #           break
+    return policy
+
+
+# initial policy
+policy = get_policy()
 
 initialState = State()
 
