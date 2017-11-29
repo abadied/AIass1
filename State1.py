@@ -390,10 +390,11 @@ def value_iteration(epsilon, gamma):
         flag = True
         for key in allStates.keys():
             new_val, new_action_index = calc_value_and_action_for_curr_state(allStates[key], gamma)
-            if new_val - value_func[key] >= epsilon:
-                value_func[key] = new_val
+            _policy[key] = OPS[new_action_index]
+            last_key_value = value_func[key]
+            value_func[key] = new_val
+            if new_val - last_key_value >= epsilon:
                 flag = False
-                _policy[key] = OPS[new_action_index]
         if flag:
             break
 
@@ -441,18 +442,17 @@ def get_possible_states(state, defined_action=None):
 
 
 #  returns an optimal policy with gamma var set to 0.9
-def policy_iteration(gamma):
+def policy_iteration(epsilon, gamma):
     local_policy = get_random_policy()
     local_value_function = None
     while True:
         change = False
-        local_value_function = get_value_function(local_policy, gamma, local_value_function)
+        local_value_function = get_value_function(local_policy, epsilon, gamma, local_value_function)
         for state_key in allStates.keys():
             state = allStates[state_key]
             possible_states = get_possible_states(state)
             max_change = 0
             max_op = None
-            curr_op = local_policy[state_key]
             for op in OPS:
                 if op != local_policy[state_key] and state.legalOp(op):
                     action_reward = computeExpectedReward(state, op)
@@ -462,10 +462,9 @@ def policy_iteration(gamma):
                         sigma_param += getProbSAS(state, next_state, op) * local_value_function[next_state_key]
                     curr_reward = action_reward + gamma * sigma_param
                     curr_change = curr_reward - local_value_function[state_key]
-                    if curr_change > max_change and (max_op is None or curr_op != op):
+                    if curr_change > max_change:
                         max_change = curr_change
                         max_op = op
-
 
             if max_change > 0:
                 local_policy[state_key] = max_op
@@ -477,7 +476,7 @@ def policy_iteration(gamma):
     return local_policy
 
 
-def get_value_function(_policy, gamma, _value_func=None):
+def get_value_function(_policy, epsilon, gamma, _value_func=None):
     if _value_func is None:
         _value_func = dict()
         for key in allStates.keys():
@@ -494,12 +493,12 @@ def get_value_function(_policy, gamma, _value_func=None):
             action = _policy[state_key]
             sigma_param = 0
             action_reward = computeExpectedReward(curr_state, action)
-            possible_states = get_possible_states(curr_state,action)
+            possible_states = get_possible_states(curr_state)
             for next_state_key in possible_states.keys():
                 next_state = allStates[next_state_key]
                 sigma_param += getProbSAS(curr_state, next_state, action) * _value_func[next_state_key]
             curr_reward = action_reward + gamma * sigma_param
-            if curr_reward - _value_func[state_key] > 0:
+            if curr_reward - _value_func[state_key] >= epsilon:
                 _value_func[state_key] = curr_reward
                 changed = True
         if not changed:
@@ -515,7 +514,7 @@ def get_policy():
     if algo_type == 'v':
         return value_iteration(0.01, 0.9)
     elif algo_type == 'p':
-        return policy_iteration(0.9)
+        return policy_iteration(0.01, 0.9)
     else:
         raise ValueError('unknown planner')
 
