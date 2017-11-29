@@ -6,6 +6,7 @@ import threading
 import time
 import matplotlib.pyplot as py
 
+plot_graph = False
 time_constant = 1 # in milis
 keep_running = True
 num_of_iteration = 2
@@ -403,11 +404,11 @@ def value_iteration(epsilon, gamma):
             new_val, new_action_index = calc_value_and_action_for_curr_state(allStates[key], gamma)
             _policy[key] = OPS[new_action_index]
             last_key_value = value_func[key]
-            value_func[key] = new_val
             if new_val - last_key_value >= epsilon:
+                value_func[key] = new_val
                 flag = False
         iteration_counter += 1
-        if iteration_counter % num_of_iteration == 0:
+        if iteration_counter % num_of_iteration == 0 and plot_graph:
             values = value_func.values()
             average_per_iteration.append((np.sum(values)/len(values), iteration_counter))
 
@@ -464,7 +465,7 @@ def policy_iteration(epsilon, gamma):
     # value_func = None
     while True:
         change = False
-        get_value_function(local_policy, epsilon, gamma, value_func)
+        set_value_function(local_policy, epsilon, gamma, value_func)
         iteration_counter += 1
         if iteration_counter % num_of_iteration == 0:
             values = value_func.values()
@@ -493,13 +494,14 @@ def policy_iteration(epsilon, gamma):
                 change = True
 
         if not change:
-            values = value_func.values()
-            average_per_iteration.append((np.sum(values) / len(values), iteration_counter))
+            if plot_graph:
+                values = value_func.values()
+                average_per_iteration.append((np.sum(values) / len(values), iteration_counter))
             break
     return local_policy
 
 
-def get_value_function(_policy, epsilon, gamma, _value_func=None):
+def set_value_function(_policy, epsilon, gamma, _value_func=None):
     if _value_func is None:
         _value_func = dict()
         for key in allStates.keys():
@@ -526,7 +528,6 @@ def get_value_function(_policy, epsilon, gamma, _value_func=None):
                 changed = True
         if not changed:
             break
-    # return _value_func
 
 # general function for both algorithms
 
@@ -576,22 +577,24 @@ def collect_and_plot_graph_data():
 
 
 # creating plot thread
-graph_t = threading.Thread(target=collect_and_plot_graph_data, args=())
-graph_t.start()
+if plot_graph:
+    graph_t = threading.Thread(target=collect_and_plot_graph_data, args=())
+    graph_t.start()
 
 # initial policy
 policy = get_policy()
 
 initialState = State()
 
-iteration_x_values = list(map(lambda x: x[0], average_per_iteration))
-timing_x_values = list(map(lambda x: x[0], average_per_second))
-iteration_y_values = list(map(lambda x: x[1], average_per_iteration))
-timing_y_values = list(map(lambda x: x[1], average_per_second))
-py.plot(iteration_y_values, iteration_x_values)
-py.show()
-py.close()
-py.plot(timing_y_values, timing_x_values)
-py.show()
+if plot_graph:
+    iteration_x_values = list(map(lambda x: x[0], average_per_iteration))
+    timing_x_values = list(map(lambda x: x[0], average_per_second))
+    iteration_y_values = list(map(lambda x: x[1], average_per_iteration))
+    timing_y_values = list(map(lambda x: x[1], average_per_second))
+    py.plot(iteration_y_values, iteration_x_values)
+    py.show()
+    py.close()
+    py.plot(timing_y_values, timing_x_values)
+    py.show()
 
 Show1.showRoom(room, policy, allStates, initialState, OPS, TRAN_PROB_MAT)
