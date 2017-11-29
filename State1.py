@@ -2,6 +2,16 @@ import random
 import copy
 import numpy as np
 import Show1
+import threading
+import time
+import matplotlib.pyplot as py
+
+time_constant = 1000 # in milis
+keep_running = True
+num_of_iteration = 4
+iteration_counter = 0
+average_per_second = list()
+average_per_iteration = list()
 
 # setting room's size
 heightInput = ""
@@ -384,6 +394,7 @@ def computeExpectedReward(state, action):
 
 # returns an optimal value function with gama variable set to 0.9
 def value_iteration(epsilon, gamma):
+    global iteration_counter, num_of_iteration, average_per_iteration
     _policy = dict()
 
     while True:
@@ -395,6 +406,10 @@ def value_iteration(epsilon, gamma):
             value_func[key] = new_val
             if new_val - last_key_value >= epsilon:
                 flag = False
+        iteration_counter += 1
+        if iteration_counter % num_of_iteration == 0:
+            average_per_iteration.append((np.average(value_func.values()), num_of_iteration))
+
         if flag:
             break
 
@@ -443,6 +458,7 @@ def get_possible_states(state, defined_action=None):
 
 #  returns an optimal policy with gamma var set to 0.9
 def policy_iteration(epsilon, gamma):
+    global iteration_counter, num_of_iteration, average_per_iteration
     local_policy = get_random_policy()
     local_value_function = None
     while True:
@@ -470,7 +486,9 @@ def policy_iteration(epsilon, gamma):
                 local_policy[state_key] = max_op
                 local_value_function[state_key] += max_change
                 change = True
-
+        iteration_counter += 1
+        if iteration_counter % num_of_iteration == 0:
+            average_per_iteration.append((np.average(local_value_function.values()),iteration_counter))
         if not change:
             break
     return local_policy
@@ -510,11 +528,17 @@ def get_value_function(_policy, epsilon, gamma, _value_func=None):
 
 # create the initial policy
 def get_policy():
+    global keep_running
     algo_type = raw_input('For Value Iteration press \'v\', For Policy Iteration press \'p\': ')
     if algo_type == 'v':
-        return value_iteration(0.01, 0.9)
+        _policy = value_iteration(0.01, 0.9)
+        keep_running = False
+        return _policy
     elif algo_type == 'p':
-        return policy_iteration(0.01, 0.9)
+        _policy = policy_iteration(0.01, 0.9)
+        keep_running = False
+        return _policy
+
     else:
         raise ValueError('unknown planner')
 
@@ -533,9 +557,31 @@ def get_random_policy():
     return policy
 
 
+def collect_and_plot_graph_data():
+    global average_per_second, average_per_iteration, iteration_counter, num_of_iteration, keep_running, time_constant
+
+    last_time_printed = time.time()
+    starting_time = last_time_printed
+    while keep_running:
+        curr_time = time.time()
+        if curr_time - last_time_printed > time_constant:
+            average_per_second.append((np.average(value_func.values(), (curr_time - starting_time)/1000)))
+            last_time_printed = curr_time
+    iteration_x_values = list(map(lambda x: x[0], average_per_iteration))
+    timing_x_values = list(map(lambda x: x[0], average_per_second))
+    iteration_y_values = list(map(lambda x: x[1], average_per_iteration))
+    timing_y_values = list(map(lambda x: x[1], average_per_second))
+
+    py.plot(iteration_x_values, iteration_y_values)
+    py.plot(timing_x_values, timing_y_values)
+
 # initial policy
 policy = get_policy()
 
 initialState = State()
+
+# creating plot thread
+graph_t = threading.Thread(target=collect_and_plot_graph_data, args=())
+graph_t.start()
 
 Show1.showRoom(room, policy, allStates, initialState, OPS, TRAN_PROB_MAT)
