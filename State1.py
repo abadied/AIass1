@@ -408,7 +408,8 @@ def value_iteration(epsilon, gamma):
                 flag = False
         iteration_counter += 1
         if iteration_counter % num_of_iteration == 0:
-            average_per_iteration.append((np.average(value_func.values()), num_of_iteration))
+            values = value_func.values()
+            average_per_iteration.append((np.sum(values)/len(values), iteration_counter))
 
         if flag:
             break
@@ -460,10 +461,14 @@ def get_possible_states(state, defined_action=None):
 def policy_iteration(epsilon, gamma):
     global iteration_counter, num_of_iteration, average_per_iteration
     local_policy = get_random_policy()
-    local_value_function = None
+    # value_func = None
     while True:
         change = False
-        local_value_function = get_value_function(local_policy, epsilon, gamma, local_value_function)
+        get_value_function(local_policy, epsilon, gamma, value_func)
+        iteration_counter += 1
+        if iteration_counter % num_of_iteration == 0:
+            values = value_func.values()
+            average_per_iteration.append((np.sum(values) / len(values), iteration_counter))
         for state_key in allStates.keys():
             state = allStates[state_key]
             possible_states = get_possible_states(state)
@@ -475,21 +480,21 @@ def policy_iteration(epsilon, gamma):
                     sigma_param = 0
                     for next_state_key in possible_states.keys():
                         next_state = allStates[next_state_key]
-                        sigma_param += getProbSAS(state, next_state, op) * local_value_function[next_state_key]
+                        sigma_param += getProbSAS(state, next_state, op) * value_func[next_state_key]
                     curr_reward = action_reward + gamma * sigma_param
-                    curr_change = curr_reward - local_value_function[state_key]
+                    curr_change = curr_reward - value_func[state_key]
                     if curr_change > max_change:
                         max_change = curr_change
                         max_op = op
 
             if max_change > 0:
                 local_policy[state_key] = max_op
-                local_value_function[state_key] += max_change
+                value_func[state_key] += max_change
                 change = True
-        iteration_counter += 1
-        if iteration_counter % num_of_iteration == 0:
-            average_per_iteration.append((np.average(local_value_function.values()), iteration_counter))
+
         if not change:
+            values = value_func.values()
+            average_per_iteration.append((np.sum(values) / len(values), iteration_counter))
             break
     return local_policy
 
@@ -521,7 +526,7 @@ def get_value_function(_policy, epsilon, gamma, _value_func=None):
                 changed = True
         if not changed:
             break
-    return _value_func
+    # return _value_func
 
 # general function for both algorithms
 
@@ -562,11 +567,11 @@ def collect_and_plot_graph_data():
 
     last_time_printed = time.time()
     starting_time = last_time_printed
-    while True:
+    while keep_running:
         curr_time = time.time()
         if curr_time - last_time_printed > time_constant:
             values_list = value_func.values()
-            average_per_second.append((np.sum(values_list)/len(values_list), (curr_time - starting_time)/1000))
+            average_per_second.append((np.sum(values_list)/len(values_list), (curr_time - starting_time)))
             last_time_printed = curr_time
 
 
@@ -583,9 +588,10 @@ iteration_x_values = list(map(lambda x: x[0], average_per_iteration))
 timing_x_values = list(map(lambda x: x[0], average_per_second))
 iteration_y_values = list(map(lambda x: x[1], average_per_iteration))
 timing_y_values = list(map(lambda x: x[1], average_per_second))
-py.plot(iteration_x_values, iteration_y_values)
+py.plot(iteration_y_values, iteration_x_values)
 py.show()
-py.plot(timing_x_values, timing_y_values)
+py.close()
+py.plot(timing_y_values, timing_x_values)
 py.show()
 
 Show1.showRoom(room, policy, allStates, initialState, OPS, TRAN_PROB_MAT)
