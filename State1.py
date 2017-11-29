@@ -6,7 +6,7 @@ import threading
 import time
 import matplotlib.pyplot as py
 
-plot_graph = False
+plot_graph = True
 time_constant = 1 # in milis
 keep_running = True
 num_of_iteration = 2
