@@ -6,9 +6,9 @@ import threading
 import time
 import matplotlib.pyplot as py
 
-time_constant = 1000 # in milis
+time_constant = 1 # in milis
 keep_running = True
-num_of_iteration = 4
+num_of_iteration = 2
 iteration_counter = 0
 average_per_second = list()
 average_per_iteration = list()
@@ -488,7 +488,7 @@ def policy_iteration(epsilon, gamma):
                 change = True
         iteration_counter += 1
         if iteration_counter % num_of_iteration == 0:
-            average_per_iteration.append((np.average(local_value_function.values()),iteration_counter))
+            average_per_iteration.append((np.average(local_value_function.values()), iteration_counter))
         if not change:
             break
     return local_policy
@@ -558,30 +558,34 @@ def get_random_policy():
 
 
 def collect_and_plot_graph_data():
-    global average_per_second, average_per_iteration, iteration_counter, num_of_iteration, keep_running, time_constant
+    global average_per_second, keep_running, time_constant
 
     last_time_printed = time.time()
     starting_time = last_time_printed
-    while keep_running:
+    while True:
         curr_time = time.time()
         if curr_time - last_time_printed > time_constant:
-            average_per_second.append((np.average(value_func.values(), (curr_time - starting_time)/1000)))
+            values_list = value_func.values()
+            average_per_second.append((np.sum(values_list)/len(values_list), (curr_time - starting_time)/1000))
             last_time_printed = curr_time
-    iteration_x_values = list(map(lambda x: x[0], average_per_iteration))
-    timing_x_values = list(map(lambda x: x[0], average_per_second))
-    iteration_y_values = list(map(lambda x: x[1], average_per_iteration))
-    timing_y_values = list(map(lambda x: x[1], average_per_second))
 
-    py.plot(iteration_x_values, iteration_y_values)
-    py.plot(timing_x_values, timing_y_values)
+
+# creating plot thread
+graph_t = threading.Thread(target=collect_and_plot_graph_data, args=())
+graph_t.start()
 
 # initial policy
 policy = get_policy()
 
 initialState = State()
 
-# creating plot thread
-graph_t = threading.Thread(target=collect_and_plot_graph_data, args=())
-graph_t.start()
+iteration_x_values = list(map(lambda x: x[0], average_per_iteration))
+timing_x_values = list(map(lambda x: x[0], average_per_second))
+iteration_y_values = list(map(lambda x: x[1], average_per_iteration))
+timing_y_values = list(map(lambda x: x[1], average_per_second))
+py.plot(iteration_x_values, iteration_y_values)
+py.show()
+py.plot(timing_x_values, timing_y_values)
+py.show()
 
 Show1.showRoom(room, policy, allStates, initialState, OPS, TRAN_PROB_MAT)
