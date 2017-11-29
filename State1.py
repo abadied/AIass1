@@ -397,14 +397,18 @@ def computeExpectedReward(state, action):
 def value_iteration(epsilon, gamma):
     global iteration_counter, num_of_iteration, average_per_iteration
     _policy = dict()
-
+    first_run = True
     while True:
         flag = True
         for key in allStates.keys():
             new_val, new_action_index = calc_value_and_action_for_curr_state(allStates[key], gamma)
-            _policy[key] = OPS[new_action_index]
             last_key_value = value_func[key]
+            if first_run:
+                _policy[key] = OPS[new_action_index]
+                value_func[key] = new_val
+
             if new_val - last_key_value >= epsilon:
+                _policy[key] = OPS[new_action_index]
                 value_func[key] = new_val
                 flag = False
         iteration_counter += 1
@@ -412,6 +416,7 @@ def value_iteration(epsilon, gamma):
             values = value_func.values()
             average_per_iteration.append((np.sum(values)/len(values), iteration_counter))
 
+        first_run = False
         if flag:
             break
 
