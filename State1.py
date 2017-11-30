@@ -397,53 +397,51 @@ def computeExpectedReward(state, action):
 # returns an optimal value function with gama variable set to 0.9
 def value_iteration(epsilon, gamma):
     global iteration_counter, num_of_iteration, average_per_iteration
-    _policy = dict()
-    _tmp_value_func = copy.deepcopy(value_func)
+    _policy = initiate_value_function()
     while True:
 
         flag = True
         for key in allStates.keys():
-            new_val, new_action_index = calc_value_and_action_for_curr_state(allStates[key], gamma)
+            new_val, new_op = calc_value_and_action_for_curr_state(key,_policy[key], gamma)
             last_key_value = value_func[key]
-            if new_val - last_key_value >= epsilon:
-                _policy[key] = OPS[new_action_index]
-                _tmp_value_func[key] = new_val
+            _policy[key] = new_op
+            value_func[key] = new_val
+            if abs(new_val - last_key_value) >= epsilon:
                 flag = False
-        iteration_counter += 1
-        for key in value_func.keys():
-            value_func[key] = _tmp_value_func[key]
-
-        if iteration_counter % num_of_iteration == 0 and plot_graph:
-            values = value_func.values()
-            average_per_iteration.append((np.sum(values)/len(values), iteration_counter))
 
         if flag:
             break
 
+        iteration_counter += 1
+        if iteration_counter % num_of_iteration == 0 and plot_graph:
+            values = value_func.values()
+            average_per_iteration.append((np.sum(values)/len(values), iteration_counter))
     return _policy
 
 
 # returns the best possible value and action index of a given state
-def calc_value_and_action_for_curr_state(state, gamma):
-    max_value = -1000
-    best_action_index = None
+def calc_value_and_action_for_curr_state(state_key,curr_op, gamma):
+    max_value = value_func[state_key]
+    state = allStates[state_key]
+    best_action = curr_op
     possible_states = get_possible_states(state)
 
-    for i in range(len(OPS)):
-        if state.legalOp(OPS[i]):
-            action_reward = computeExpectedReward(state, OPS[i])
+    for op in OPS:
+        if state.legalOp(op):
+            action_reward = computeExpectedReward(state, op)
             sigma_param = 0
 
             for next_state_key in possible_states.keys():
                 next_state = allStates[next_state_key]
-                sigma_param += getProbSAS(state, next_state, OPS[i])*value_func[next_state_key]
+                sigma_param += getProbSAS(state, next_state, op)*value_func[next_state_key]
 
             curr_reward = action_reward + gamma*sigma_param
-            max_value = max(max_value, curr_reward)
-            if max_value == curr_reward:
-                best_action_index = i
 
-    return max_value, best_action_index
+            if max_value <= curr_reward:
+                best_action = op
+                max_value = curr_reward
+
+    return max_value, best_action
 
 
 # returns possible states test
@@ -554,6 +552,21 @@ def get_policy():
         raise ValueError('unknown planner')
 
 
+def initiate_value_function():
+    _policy = dict()
+    for key in allStates.keys():
+        first_op = True
+        for op in OPS:
+            if allStates[key].legalOp(op):
+                reward = computeExpectedReward(allStates[key], op)
+                if reward > value_func[key] or first_op:
+                    first_op = False
+                    value_func[key] = reward
+                    _policy[key] = op
+        # if allStates[key].isEnd():
+        #     value_func[key] += 30
+    return _policy
+
 def get_random_policy():
     policy = dict()
     for key in allStates.keys():
@@ -566,7 +579,6 @@ def get_random_policy():
                     policy[key] = op
                 break
     return policy
-
 
 def collect_and_plot_graph_data():
     global average_per_second, keep_running, time_constant
