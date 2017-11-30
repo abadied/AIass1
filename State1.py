@@ -6,7 +6,8 @@ import threading
 import time
 import matplotlib.pyplot as py
 
-plot_graph = True
+
+plot_graph = False
 time_constant = 1 # in milis
 keep_running = True
 num_of_iteration = 2
@@ -397,26 +398,25 @@ def computeExpectedReward(state, action):
 def value_iteration(epsilon, gamma):
     global iteration_counter, num_of_iteration, average_per_iteration
     _policy = dict()
-    first_run = True
+    _tmp_value_func = copy.deepcopy(value_func)
     while True:
+
         flag = True
         for key in allStates.keys():
             new_val, new_action_index = calc_value_and_action_for_curr_state(allStates[key], gamma)
             last_key_value = value_func[key]
-            if first_run:
-                _policy[key] = OPS[new_action_index]
-                value_func[key] = new_val
-
             if new_val - last_key_value >= epsilon:
                 _policy[key] = OPS[new_action_index]
-                value_func[key] = new_val
+                _tmp_value_func[key] = new_val
                 flag = False
         iteration_counter += 1
+        for key in value_func.keys():
+            value_func[key] = _tmp_value_func[key]
+
         if iteration_counter % num_of_iteration == 0 and plot_graph:
             values = value_func.values()
             average_per_iteration.append((np.sum(values)/len(values), iteration_counter))
 
-        first_run = False
         if flag:
             break
 
