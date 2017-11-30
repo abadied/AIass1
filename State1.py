@@ -7,7 +7,7 @@ import time
 import matplotlib.pyplot as py
 
 
-plot_graph = True
+plot_graph = False
 time_constant = 1 # in milis
 keep_running = True
 num_of_iteration = 2
@@ -427,19 +427,18 @@ def calc_value_and_action_for_curr_state(state_key, gamma):
     possible_states = get_possible_states(state)
 
     for op in OPS:
-        if state.legalOp(op):
-            action_reward = computeExpectedReward(state, op)
-            sigma_param = 0
+        action_reward = computeExpectedReward(state, op)
+        sigma_param = 0
 
-            for next_state_key in possible_states.keys():
-                next_state = allStates[next_state_key]
-                sigma_param += getProbSAS(state, next_state, op)*value_func[next_state_key]
+        for next_state_key in possible_states.keys():
+            next_state = allStates[next_state_key]
+            sigma_param += getProbSAS(state, next_state, op)*value_func[next_state_key]
 
-            curr_reward = action_reward + gamma*sigma_param
+        curr_reward = action_reward + gamma*sigma_param
 
-            if max_value < curr_reward or max_value is None:
-                best_action = op
-                max_value = curr_reward
+        if max_value < curr_reward or max_value is None:
+            best_action = op
+            max_value = curr_reward
 
     return max_value, best_action
 
@@ -463,7 +462,7 @@ def get_possible_states(state, defined_action=None):
 
 #  returns an optimal policy with gamma var set to 0.9
 def policy_iteration(epsilon, gamma):
-    global iteration_counter, num_of_iteration, average_per_iteration
+    global iteration_counter, num_of_iteration, average_per_iteration, value_func
     local_policy = get_random_policy()
     # value_func = None
     while True:
