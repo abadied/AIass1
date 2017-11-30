@@ -7,7 +7,7 @@ import time
 import matplotlib.pyplot as py
 
 
-plot_graph = False
+plot_graph = True
 time_constant = 1 # in milis
 keep_running = True
 num_of_iteration = 2
@@ -396,13 +396,12 @@ def computeExpectedReward(state, action):
 
 # returns an optimal value function with gama variable set to 0.9
 def value_iteration(epsilon, gamma):
-    global iteration_counter, num_of_iteration, average_per_iteration
+    global iteration_counter, num_of_iteration, average_per_iteration, value_func
     _policy = initiate_value_function()
     while True:
-
         flag = True
         for key in allStates.keys():
-            new_val, new_op = calc_value_and_action_for_curr_state(key,_policy[key], gamma)
+            new_val, new_op = calc_value_and_action_for_curr_state(key, gamma)
             last_key_value = value_func[key]
             _policy[key] = new_op
             value_func[key] = new_val
@@ -420,10 +419,11 @@ def value_iteration(epsilon, gamma):
 
 
 # returns the best possible value and action index of a given state
-def calc_value_and_action_for_curr_state(state_key,curr_op, gamma):
-    max_value = value_func[state_key]
+def calc_value_and_action_for_curr_state(state_key, gamma):
+    global value_func
+    max_value = None
     state = allStates[state_key]
-    best_action = curr_op
+    best_action = None
     possible_states = get_possible_states(state)
 
     for op in OPS:
@@ -437,7 +437,7 @@ def calc_value_and_action_for_curr_state(state_key,curr_op, gamma):
 
             curr_reward = action_reward + gamma*sigma_param
 
-            if max_value <= curr_reward:
+            if max_value < curr_reward or max_value is None:
                 best_action = op
                 max_value = curr_reward
 
@@ -563,8 +563,6 @@ def initiate_value_function():
                     first_op = False
                     value_func[key] = reward
                     _policy[key] = op
-        # if allStates[key].isEnd():
-        #     value_func[key] += 30
     return _policy
 
 def get_random_policy():
