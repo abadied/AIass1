@@ -7,7 +7,7 @@ import time
 import matplotlib.pyplot as py
 
 
-plot_graph = False
+plot_graph = True
 time_constant = 1 # in milis
 keep_running = True
 num_of_iteration = 2
@@ -427,18 +427,19 @@ def calc_value_and_action_for_curr_state(state_key, gamma):
     possible_states = get_possible_states(state)
 
     for op in OPS:
-        action_reward = computeExpectedReward(state, op)
-        sigma_param = 0
+        if state.legalOp(op):
+            action_reward = computeExpectedReward(state, op)
+            sigma_param = 0
 
-        for next_state_key in possible_states.keys():
-            next_state = allStates[next_state_key]
-            sigma_param += getProbSAS(state, next_state, op)*value_func[next_state_key]
+            for next_state_key in possible_states.keys():
+                next_state = allStates[next_state_key]
+                sigma_param += getProbSAS(state, next_state, op)*value_func[next_state_key]
 
-        curr_reward = action_reward + gamma*sigma_param
+            curr_reward = action_reward + gamma*sigma_param
 
-        if max_value < curr_reward or max_value is None:
-            best_action = op
-            max_value = curr_reward
+            if max_value < curr_reward or max_value is None:
+                best_action = op
+                max_value = curr_reward
 
     return max_value, best_action
 
