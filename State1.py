@@ -8,7 +8,7 @@ import matplotlib.pyplot as py
 
 
 plot_graph = True
-time_constant = 1 # in milis
+time_constant = 0.5 # in milis
 keep_running = True
 num_of_iteration = 2
 iteration_counter = 0
@@ -347,13 +347,9 @@ def getAllStates():
     allStates[currentState.hash] = currentState
     value_func[currentState.hash] = 0
     getAllStatesImpl(currentState, allStates, value_func)
-    return allStates, value_func
+    return allStates , value_func
 
 allStates, value_func = getAllStates()
-# for key in value_func.keys():
-#     state = allStates[key]
-#     if state.end:
-#         value_func[key] = 10
 
 def computeReward(state, action):
     """this function computes the reward of doing an action in a specific state (given that the robot succeeded to make it, 
@@ -364,6 +360,8 @@ def computeReward(state, action):
         return PICKING_CREDIT - MOVE_COST
     elif action == "putInBasket":
         return PUTTING_CREDIT * state.stateRoom[3] - MOVE_COST
+    elif action == 'idle':
+        return 0
     return - MOVE_COST
 
 def getProbSAS(state1, state2, action):
@@ -399,13 +397,14 @@ def value_iteration(epsilon, gamma):
     global iteration_counter, num_of_iteration, average_per_iteration, value_func
     _policy = initiate_value_function()
     while True:
+
         flag = True
         for key in allStates.keys():
             new_val, new_op = calc_value_and_action_for_curr_state(key, gamma)
             last_key_value = value_func[key]
-            _policy[key] = new_op
-            value_func[key] = new_val
             if abs(new_val - last_key_value) >= epsilon:
+                _policy[key] = new_op
+                value_func[key] = new_val
                 flag = False
 
         if flag:
@@ -433,10 +432,9 @@ def calc_value_and_action_for_curr_state(state_key, gamma):
 
             for next_state_key in possible_states.keys():
                 next_state = allStates[next_state_key]
-                sigma_param += getProbSAS(state, next_state, op)*value_func[next_state_key]
+                sigma_param += getProbSAS(state, next_state, op) * value_func[next_state_key]
 
-            curr_reward = action_reward + gamma*sigma_param
-
+            curr_reward = action_reward + gamma * sigma_param
             if max_value < curr_reward or max_value is None:
                 best_action = op
                 max_value = curr_reward
@@ -463,14 +461,14 @@ def get_possible_states(state, defined_action=None):
 
 #  returns an optimal policy with gamma var set to 0.9
 def policy_iteration(epsilon, gamma):
-    global iteration_counter, num_of_iteration, average_per_iteration, value_func
+    global iteration_counter, num_of_iteration, average_per_iteration, value_func, plot_graph
     local_policy = get_random_policy()
     # value_func = None
     while True:
         change = False
         set_value_function(local_policy, epsilon, gamma, value_func)
         iteration_counter += 1
-        if iteration_counter % num_of_iteration == 0:
+        if iteration_counter % num_of_iteration == 0 and plot_graph:
             values = value_func.values()
             average_per_iteration.append((np.sum(values) / len(values), iteration_counter))
         for state_key in allStates.keys():
@@ -497,9 +495,6 @@ def policy_iteration(epsilon, gamma):
                 change = True
 
         if not change:
-            if plot_graph:
-                values = value_func.values()
-                average_per_iteration.append((np.sum(values) / len(values), iteration_counter))
             break
     return local_policy
 
@@ -579,7 +574,7 @@ def get_random_policy():
     return policy
 
 def collect_and_plot_graph_data():
-    global average_per_second, keep_running, time_constant
+    global average_per_second, keep_running, time_constant,  value_func
 
     last_time_printed = time.time()
     starting_time = last_time_printed
@@ -602,6 +597,7 @@ policy = get_policy()
 initialState = State()
 
 if plot_graph:
+    print average_per_iteration
     iteration_x_values = list(map(lambda x: x[0], average_per_iteration))
     timing_x_values = list(map(lambda x: x[0], average_per_second))
     iteration_y_values = list(map(lambda x: x[1], average_per_iteration))
