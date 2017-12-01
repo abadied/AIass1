@@ -8,7 +8,7 @@ import matplotlib.pyplot as py
 
 
 plot_graph = True
-seconds_per_period = 0.5 # in milis
+seconds_per_period = 1 # in milis
 keep_running = True
 iterations_per_period = 2
 iteration_counter = 0
@@ -393,8 +393,15 @@ def computeExpectedReward(state, action):
 
 # returns an optimal value function with gama variable set to 0.9
 def value_iteration(epsilon, gamma):
+    """
+    This function simulate value iteration on the current set of states
+    :param epsilon: 0.01
+    :param gamma:0.9
+    :return: maximal policy according to the maximal value function generated in this function
+    """
     global iteration_counter, iterations_per_period, average_per_iteration, value_func
-    _policy = initiate_value_function()
+    _policy = dict()
+    initiate_value_function()
     while True:
 
         flag = True
@@ -420,6 +427,12 @@ def value_iteration(epsilon, gamma):
 
 # returns the best possible value and action index of a given state
 def calc_value_and_action_for_curr_state(state_key, gamma):
+    """
+    This function calculate the maximum next value of a given state and return both value and action regrading it
+    :param state_key: the specific state key tested
+    :param gamma: 0.09
+    :return: maximum value for current state and best op
+    """
     global value_func
     max_value = None
     state = allStates[state_key]
@@ -445,6 +458,13 @@ def calc_value_and_action_for_curr_state(state_key, gamma):
 
 # returns possible states test
 def get_possible_states(state, defined_action=None):
+    """
+    Given a specific state this function returns all the possible states that the robot can get
+    to from this state.
+    :param state: some tested state
+    :param defined_action: this parameter is None unless a specific state is needed
+    :return: a dictionary of all requested states
+    """
     possible_states = dict()
     if defined_action is None:
         for op in OPS:
@@ -462,6 +482,12 @@ def get_possible_states(state, defined_action=None):
 
 #  returns an optimal policy with gamma var set to 0.9
 def policy_iteration(epsilon, gamma):
+    """
+    This function simulate policy iteration over this set of states(allStates) and return a proper policy
+    :param epsilon: 0.01
+    :param gamma: 0.9
+    :return: best policy according to gamma and epsilon
+    """
     global iteration_counter, iterations_per_period, average_per_iteration, value_func, plot_graph
     local_policy = get_random_policy()
     # value_func = None
@@ -501,6 +527,15 @@ def policy_iteration(epsilon, gamma):
 
 
 def set_value_function(_policy, epsilon, gamma, _value_func=None):
+    """
+    This function finds the matching value function the the given policy according to gamma and epsilon
+    :param _policy: some given policy
+    :param epsilon: 0.01
+    :param gamma: 0.9
+    :param _value_func: the current value function
+    :return: a value function matching the given policy
+    """
+
     if _value_func is None:
         _value_func = dict()
         for key in allStates.keys():
@@ -533,6 +568,10 @@ def set_value_function(_policy, epsilon, gamma, _value_func=None):
 
 # create the initial policy
 def get_policy():
+    """
+    This function return a policy according to the user request - by policy/value iteration
+    :return: a maximal policy for the program
+    """
     global keep_running
     algo_type = raw_input('For Value Iteration press \'v\', For Policy Iteration press \'p\': ')
     if algo_type == 'v':
@@ -549,19 +588,22 @@ def get_policy():
 
 
 def initiate_value_function():
-    _policy = dict()
+    """
+    This function returns a initial value function for value iteration
+    :return: initial value function
+    """
     for key in allStates.keys():
-        first_op = True
         for op in OPS:
-            if allStates[key].legalOp(op):
-                reward = computeExpectedReward(allStates[key], op)
-                if reward > value_func[key] or first_op:
-                    first_op = False
-                    value_func[key] = -10
-                    _policy[key] = op
-    return _policy
+            state = allStates[key]
+            if state.legalOp(op):
+                value_func[key] = -3 * max(roomHeight, roomWidth)
+
 
 def get_random_policy():
+    """
+    This fuction creates a random policy and returns it.
+    :return: random policy
+    """
     policy = dict()
     for key in allStates.keys():
         for op in OPS:
@@ -574,7 +616,13 @@ def get_random_policy():
                 break
     return policy
 
+
 def collect_and_plot_graph_data():
+    """
+    This function runs by a seprated thread and writes every constant amount of time the average
+    of the value function at that specific time.
+    :return: None
+    """
     global average_per_second, keep_running, seconds_per_period,  value_func
 
     last_time_printed = time.time()
@@ -597,6 +645,7 @@ policy = get_policy()
 
 initialState = State()
 
+# needed only if graph is plotted
 if plot_graph:
     print average_per_iteration
     iteration_x_values = list(map(lambda x: x[0], average_per_iteration))
