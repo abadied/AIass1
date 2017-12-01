@@ -592,6 +592,7 @@ def initiate_value_function():
     This function returns a initial value function for value iteration
     :return: initial value function
     """
+    global value_func
     for key in allStates.keys():
         for op in OPS:
             state = allStates[key]
