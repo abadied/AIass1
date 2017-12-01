@@ -643,7 +643,8 @@ def get_initial_policy():
         else:
             _policy[key] = get_action(curr_state.stateRoom[0][0], curr_state.stateRoom[0][1],
                                       BASKET_POSITION[0], BASKET_POSITION[1])
-    return   _policy
+    return _policy
+
 
 def collect_and_plot_graph_data():
     """
