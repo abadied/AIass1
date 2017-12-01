@@ -8,9 +8,9 @@ import matplotlib.pyplot as py
 
 
 plot_graph = True
-time_constant = 0.5 # in milis
+seconds_per_period = 0.5 # in milis
 keep_running = True
-num_of_iteration = 2
+iterations_per_period = 2
 iteration_counter = 0
 average_per_second = list()
 average_per_iteration = list()
@@ -360,8 +360,7 @@ def computeReward(state, action):
         return PICKING_CREDIT - MOVE_COST
     elif action == "putInBasket":
         return PUTTING_CREDIT * state.stateRoom[3] - MOVE_COST
-    elif action == 'idle':
-        return 0
+
     return - MOVE_COST
 
 def getProbSAS(state1, state2, action):
@@ -394,7 +393,7 @@ def computeExpectedReward(state, action):
 
 # returns an optimal value function with gama variable set to 0.9
 def value_iteration(epsilon, gamma):
-    global iteration_counter, num_of_iteration, average_per_iteration, value_func
+    global iteration_counter, iterations_per_period, average_per_iteration, value_func
     _policy = initiate_value_function()
     while True:
 
@@ -402,16 +401,18 @@ def value_iteration(epsilon, gamma):
         for key in allStates.keys():
             new_val, new_op = calc_value_and_action_for_curr_state(key, gamma)
             last_key_value = value_func[key]
+
             if abs(new_val - last_key_value) >= epsilon:
                 _policy[key] = new_op
                 value_func[key] = new_val
+
                 flag = False
 
         if flag:
             break
 
         iteration_counter += 1
-        if iteration_counter % num_of_iteration == 0 and plot_graph:
+        if iteration_counter % iterations_per_period == 0 and plot_graph:
             values = value_func.values()
             average_per_iteration.append((np.sum(values)/len(values), iteration_counter))
     return _policy
@@ -428,14 +429,14 @@ def calc_value_and_action_for_curr_state(state_key, gamma):
     for op in OPS:
         if state.legalOp(op):
             action_reward = computeExpectedReward(state, op)
-            sigma_param = 0
+            sigma_param = 0.0
 
             for next_state_key in possible_states.keys():
                 next_state = allStates[next_state_key]
                 sigma_param += getProbSAS(state, next_state, op) * value_func[next_state_key]
 
             curr_reward = action_reward + gamma * sigma_param
-            if max_value < curr_reward or max_value is None:
+            if max_value <= curr_reward or max_value is None:
                 best_action = op
                 max_value = curr_reward
 
@@ -461,14 +462,14 @@ def get_possible_states(state, defined_action=None):
 
 #  returns an optimal policy with gamma var set to 0.9
 def policy_iteration(epsilon, gamma):
-    global iteration_counter, num_of_iteration, average_per_iteration, value_func, plot_graph
+    global iteration_counter, iterations_per_period, average_per_iteration, value_func, plot_graph
     local_policy = get_random_policy()
     # value_func = None
     while True:
         change = False
         set_value_function(local_policy, epsilon, gamma, value_func)
         iteration_counter += 1
-        if iteration_counter % num_of_iteration == 0 and plot_graph:
+        if iteration_counter % iterations_per_period == 0 and plot_graph:
             values = value_func.values()
             average_per_iteration.append((np.sum(values) / len(values), iteration_counter))
         for state_key in allStates.keys():
@@ -556,7 +557,7 @@ def initiate_value_function():
                 reward = computeExpectedReward(allStates[key], op)
                 if reward > value_func[key] or first_op:
                     first_op = False
-                    value_func[key] = reward
+                    value_func[key] = -10
                     _policy[key] = op
     return _policy
 
@@ -574,13 +575,13 @@ def get_random_policy():
     return policy
 
 def collect_and_plot_graph_data():
-    global average_per_second, keep_running, time_constant,  value_func
+    global average_per_second, keep_running, seconds_per_period,  value_func
 
     last_time_printed = time.time()
     starting_time = last_time_printed
     while keep_running:
         curr_time = time.time()
-        if curr_time - last_time_printed > time_constant:
+        if curr_time - last_time_printed > seconds_per_period:
             values_list = value_func.values()
             average_per_second.append((np.sum(values_list)/len(values_list), (curr_time - starting_time)))
             last_time_printed = curr_time
