@@ -489,8 +489,7 @@ def policy_iteration(epsilon, gamma):
     :return: best policy according to gamma and epsilon
     """
     global iteration_counter, iterations_per_period, average_per_iteration, value_func, plot_graph
-    local_policy = get_random_policy()
-    # value_func = None
+    local_policy = get_initial_policy()
     while True:
         change = False
         set_value_function(local_policy, epsilon, gamma, value_func)
@@ -592,6 +591,7 @@ def initiate_value_function():
     This function returns a initial value function for value iteration
     :return: initial value function
     """
+    global value_func
     for key in allStates.keys():
         for op in OPS:
             state = allStates[key]
@@ -599,23 +599,51 @@ def initiate_value_function():
                 value_func[key] = -3 * max(roomHeight, roomWidth)
 
 
-def get_random_policy():
+def get_action(x_pos, y_pos, i_pos, j_pos):
     """
-    This fuction creates a random policy and returns it.
-    :return: random policy
+    This function returns the relevant action for current position and state
+    :param x_pos: x location
+    :param y_pos: y location
+    :param i_pos: i position - basket/fruit/stain
+    :param j_pos: j position - basket/fruit/stain
+    :return: relevant action
     """
-    policy = dict()
-    for key in allStates.keys():
-        for op in OPS:
-            curr_state = allStates[key]
-            if curr_state.legalOp(op):
-                if curr_state.end:
-                    policy[key] = 'idle'
-                else:
-                    policy[key] = op
-                break
-    return policy
+    if x_pos > i_pos:
+        return "up"
+    elif x_pos < j_pos:
+        return "down"
+    elif y_pos > j_pos:
+        return "left"
+    else:
+        return "right"
 
+
+def get_initial_policy():
+    """
+    This function creates an initial policy  according to specifications we set and returns it.
+    :return: initial policy
+    """
+    _policy = dict()
+    for key in allStates.keys():
+        curr_state = allStates[key]
+        if curr_state.stateRoom[0] in curr_state.stateRoom[1]:
+            _policy[key] = "pick"
+        elif curr_state.stateRoom[0] in curr_state.stateRoom[2]:
+            _policy[key] = "clean"
+        elif curr_state.legalOp("putInBasket") and curr_state.stateRoom[3] > 0:
+            _policy[key] = "putInBasket"
+        elif len(curr_state.stateRoom[1]) == 0 and len(curr_state.stateRoom[2]) == 0 and curr_state.stateRoom[3] == 0:
+            _policy[key] = "idle"
+        elif len(curr_state.stateRoom[1]) > 0:
+            _policy[key] = get_action(curr_state.stateRoom[0][0], curr_state.stateRoom[0][1],
+                                      curr_state.stateRoom[1][0][0], curr_state.stateRoom[1][0][1])
+        elif len(curr_state.stateRoom[2]) > 0:
+            _policy[key] = get_action(curr_state.stateRoom[0][0], curr_state.stateRoom[0][1],
+                                      curr_state.stateRoom[2][0][0], curr_state.stateRoom[2][0][1])
+        else:
+            _policy[key] = get_action(curr_state.stateRoom[0][0], curr_state.stateRoom[0][1],
+                                      BASKET_POSITION[0], BASKET_POSITION[1])
+    return   _policy
 
 def collect_and_plot_graph_data():
     """
