@@ -676,7 +676,6 @@ initialState = State()
 
 # needed only if graph is plotted
 if plot_graph:
-    print average_per_iteration
     iteration_x_values = list(map(lambda x: x[0], average_per_iteration))
     timing_x_values = list(map(lambda x: x[0], average_per_second))
     iteration_y_values = list(map(lambda x: x[1], average_per_iteration))

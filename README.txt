@@ -6,7 +6,7 @@ Constants for graphs:
   a. seconds_per_period
   b. iterations_per_period
   c. plot_graph
-  if you want to find the policy without plotting the graphs (plotting the graphs affects running time performance)
+  *if you want to find the policy without plotting the graphs (plotting the graphs affects running time performance)
    please change the value of 'plot_graph' to false
   
  Optimization
@@ -34,9 +34,9 @@ Constants for graphs:
   and the relevant value function.
  
  Plotting graphs:
- a. collect_and_plot_graph_data: This function runs by a separated thread and writes every constant amount of time the average
+ a. Collect_and_plot_graph_data: This function runs by a separated thread and writes every constant amount of time the average
     of the value function at that specific time.
- b. plotting bu iterations: every constant amount of iteration, both methods (value/policy) computes the average of
+ b. Plotting bu iterations: every constant amount of iteration, both methods (value/policy) computes the average of
   the value function and save it with its corresponding number of iteration.
  
  Configurations:
