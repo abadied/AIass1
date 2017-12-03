@@ -1,17 +1,46 @@
-A short explanation of State1 and Show1 files and how to use them.
+Running the algorithms:
+after entering the amount and the positions of stains and fruits please enter v for value iteration algorithm or p for
+policy iteration (get_policy method responsible for that).
 
-We suggest to run the program once or twice before reading this file.
-Except for very simple functions, each function is documented in it's beginning.
-
-State1:
-The file starts with the "building" of the room- the room is simply a 2-d int array (which in python is implemented as list of lists), such that the i,j-th cell represents what is the i,j-th square of the room (in the graphical display). The number 'num' in the cell, will be the object COLOR_DICT[num] (the variable COLOR_DICT is defined in the head of Show1). The initialization includes the robot's and basket's positions, but those can be changed in order to check that your program works regardless of initial position of those objects. In addition, the action rewards are initialized, and may be changed to see how it affects the robot's behavior.
-
-The variable TRAN_PROB_MAT defines the distribution of what action will be done, given the action that was tried to be done. Notice the var OPS holds all possible actions for the robot to make. For all i,j, TRAN_PROB_MAT[i][j] = Prob (action taken = OPS[j] | action tried = OPS[i]). For example, you can see that when the robot tries to move up, it will succeed with prob of 0.8, will divert right or left with prob of 0.1 each, but it will definitely not go down.
-
-The function initRoom initializes an empty room, surrounded in walls. Note that the room sizes include the outer walls. You may add obstacles (put '0' in the appropriate cell).
-
-The scattering functions scatter the stains and the fruits in the room. You can do it manually, or let the program scatter them randomly.
-
-Class State represents a specific state. A state is defined by the robot's, stains, and fruits positions and the number of fruits the robot holds. The variable allStates holds the state space.
-
-In the end of State1 file, a random policy is initialized. As it is now, you can see that some of the actions cannot be chosen: this is done to make sure that a movement action will be chosen and you'll be able to see the change in the GUI. You might want to make some changes (such as initializing a policy that will always go up), to understand how it works.
+Constants for graphs:
+  a. seconds_per_period
+  b. iterations_per_period
+  c. plot_graph
+  if you want to find the policy without plotting the graphs (plotting the graphs affects running time performance)
+   please change the value of 'plot_graph' to false
+  
+ Optimization
+  value iteration:
+  a. get_possible_states: when updating state using bellman equation we only run over the possible states the robot can
+   reach from that state. we get the possible states for state S by checking the next actual state for each legal action in state S.
+  b. initiate_value_function: we create an initial value function with a pessimist estimate for each state.
+  c. value_iteration, calc_value_and_action_for_curr_state: value iteration simulates value iteration algorithm, we use
+   calc_value_and_action_for_curr_state for finding the optimal action and maximum value for each state in each iteration
+    until convergence, also we calculate and update in real time the value function instead of saving copies of it.
+  
+ Policy iteration:
+ a. get_possible_states: when updating state using bellman equation we only run over the possible states the robot can
+  reach from that state. we get the possible states for state S by checking the next actual state for each legal action
+   in state S.
+ b. get_initial_policy: initiate 'smart' policy by checking for each state what is the most likable action for each state.
+  for example:  state in which the robot`s position is the same as the position of one of the stains the initiate action
+   in "clean", the same for fruits and "pick" and for "put in basket" - when the robot position is the same as basket
+    position and he already picked some fruits.
+ c. get_action: in case the position of the robot is in empty cell, the method above use this function in order to find
+  the direction to stain, fruit or the basket.
+ d. policy_iteration, set_value_function: policy iteration simulates policy iteration algorithm, we use
+ set_value_function in order to find the matching value function the the given policy according to gamma and epsilon,
+  we updates several states in the policy in each iteration in order to accelerate calculation time of the new policy
+  and the relevant value function.
+ 
+ Plotting graphs:
+ a. collect_and_plot_graph_data: This function runs by a separated thread and writes every constant amount of time the average
+    of the value function at that specific time.
+ b. plotting bu iterations: every constant amount of iteration, both methods (value/policy) computes the average of
+  the value function and save it with its corresponding number of iteration.
+ 
+ Configurations:
+ board: 4 on 4 combinations with fruits and stains.
+ board: 5 on 5, all possible scattering of fruits and/or stains
+ board: 7 on 7, 2 stains and 2 fruits
+ board: 10 on 10, 2 stains and 2 fruits (work fast without plotting the graphs)
