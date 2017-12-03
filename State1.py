@@ -6,9 +6,11 @@ import threading
 import time
 import matplotlib.pyplot as py
 
-time_constant = 1 # in milis
+
+plot_graph = True
+seconds_per_period = 1 # in milis
 keep_running = True
-num_of_iteration = 2
+iterations_per_period = 2
 iteration_counter = 0
 average_per_second = list()
 average_per_iteration = list()
@@ -210,7 +212,7 @@ class State:
         return self.end
 
     def nextState(self, op):
-        """givan a state and an operation to apply, computes the actual action taken, 
+        """givan a state and an operation to apply, computes the actual action taken,
             and returns the next room's state after applying the actual action"""
         global TRAN_PROB_MAT
         actionIndex = OPS.index(op)
@@ -345,16 +347,12 @@ def getAllStates():
     allStates[currentState.hash] = currentState
     value_func[currentState.hash] = 0
     getAllStatesImpl(currentState, allStates, value_func)
-    return allStates, value_func
+    return allStates , value_func
 
 allStates, value_func = getAllStates()
-# for key in value_func.keys():
-#     state = allStates[key]
-#     if state.end:
-#         value_func[key] = 10
 
 def computeReward(state, action):
-    """this function computes the reward of doing an action in a specific state (given that the robot succeeded to make it, 
+    """this function computes the reward of doing an action in a specific state (given that the robot succeeded to make it,
         i.e. this is the actual action taken)"""
     if action == "clean" and state.stateRoom[0] in state.stateRoom[1]:
         return CLEANING_CREDIT - MOVE_COST
@@ -362,6 +360,7 @@ def computeReward(state, action):
         return PICKING_CREDIT - MOVE_COST
     elif action == "putInBasket":
         return PUTTING_CREDIT * state.stateRoom[3] - MOVE_COST
+
     return - MOVE_COST
 
 def getProbSAS(state1, state2, action):
@@ -394,54 +393,78 @@ def computeExpectedReward(state, action):
 
 # returns an optimal value function with gama variable set to 0.9
 def value_iteration(epsilon, gamma):
-    global iteration_counter, num_of_iteration, average_per_iteration
+    """
+    This function simulate value iteration on the current set of states
+    :param epsilon: 0.01
+    :param gamma:0.9
+    :return: maximal policy according to the maximal value function generated in this function
+    """
+    global iteration_counter, iterations_per_period, average_per_iteration, value_func
     _policy = dict()
-
+    initiate_value_function()
     while True:
+
         flag = True
         for key in allStates.keys():
-            new_val, new_action_index = calc_value_and_action_for_curr_state(allStates[key], gamma)
-            _policy[key] = OPS[new_action_index]
+            new_val, new_op = calc_value_and_action_for_curr_state(key, gamma)
             last_key_value = value_func[key]
-            value_func[key] = new_val
-            if new_val - last_key_value >= epsilon:
+
+            if abs(new_val - last_key_value) >= epsilon:
+                _policy[key] = new_op
+                value_func[key] = new_val
+
                 flag = False
-        iteration_counter += 1
-        if iteration_counter % num_of_iteration == 0:
-            values = value_func.values()
-            average_per_iteration.append((np.sum(values)/len(values), iteration_counter))
 
         if flag:
             break
 
+        iteration_counter += 1
+        if iteration_counter % iterations_per_period == 0 and plot_graph:
+            values = value_func.values()
+            average_per_iteration.append((np.sum(values)/len(values), iteration_counter))
     return _policy
 
 
 # returns the best possible value and action index of a given state
-def calc_value_and_action_for_curr_state(state, gamma):
-    max_value = -1000
-    best_action_index = None
+def calc_value_and_action_for_curr_state(state_key, gamma):
+    """
+    This function calculate the maximum next value of a given state and return both value and action regrading it
+    :param state_key: the specific state key tested
+    :param gamma: 0.09
+    :return: maximum value for current state and best op
+    """
+    global value_func
+    max_value = None
+    state = allStates[state_key]
+    best_action = None
     possible_states = get_possible_states(state)
 
-    for i in range(len(OPS)):
-        if state.legalOp(OPS[i]):
-            action_reward = computeExpectedReward(state, OPS[i])
-            sigma_param = 0
+    for op in OPS:
+        if state.legalOp(op):
+            action_reward = computeExpectedReward(state, op)
+            sigma_param = 0.0
 
             for next_state_key in possible_states.keys():
                 next_state = allStates[next_state_key]
-                sigma_param += getProbSAS(state, next_state, OPS[i])*value_func[next_state_key]
+                sigma_param += getProbSAS(state, next_state, op) * value_func[next_state_key]
 
-            curr_reward = action_reward + gamma*sigma_param
-            max_value = max(max_value, curr_reward)
-            if max_value == curr_reward:
-                best_action_index = i
+            curr_reward = action_reward + gamma * sigma_param
+            if max_value <= curr_reward or max_value is None:
+                best_action = op
+                max_value = curr_reward
 
-    return max_value, best_action_index
+    return max_value, best_action
 
 
 # returns possible states test
 def get_possible_states(state, defined_action=None):
+    """
+    Given a specific state this function returns all the possible states that the robot can get
+    to from this state.
+    :param state: some tested state
+    :param defined_action: this parameter is None unless a specific state is needed
+    :return: a dictionary of all requested states
+    """
     possible_states = dict()
     if defined_action is None:
         for op in OPS:
@@ -459,14 +482,19 @@ def get_possible_states(state, defined_action=None):
 
 #  returns an optimal policy with gamma var set to 0.9
 def policy_iteration(epsilon, gamma):
-    global iteration_counter, num_of_iteration, average_per_iteration
-    local_policy = get_random_policy()
-    # value_func = None
+    """
+    This function simulate policy iteration over this set of states(allStates) and return a proper policy
+    :param epsilon: 0.01
+    :param gamma: 0.9
+    :return: best policy according to gamma and epsilon
+    """
+    global iteration_counter, iterations_per_period, average_per_iteration, value_func, plot_graph
+    local_policy = get_initial_policy()
     while True:
         change = False
-        get_value_function(local_policy, epsilon, gamma, value_func)
+        set_value_function(local_policy, epsilon, gamma)
         iteration_counter += 1
-        if iteration_counter % num_of_iteration == 0:
+        if iteration_counter % iterations_per_period == 0 and plot_graph:
             values = value_func.values()
             average_per_iteration.append((np.sum(values) / len(values), iteration_counter))
         for state_key in allStates.keys():
@@ -493,21 +521,28 @@ def policy_iteration(epsilon, gamma):
                 change = True
 
         if not change:
-            values = value_func.values()
-            average_per_iteration.append((np.sum(values) / len(values), iteration_counter))
             break
     return local_policy
 
 
-def get_value_function(_policy, epsilon, gamma, _value_func=None):
-    if _value_func is None:
-        _value_func = dict()
+def set_value_function(_policy, epsilon, gamma):
+    """
+    This function finds the matching value function the the given policy according to gamma and epsilon
+    :param _policy: some given policy
+    :param epsilon: 0.01
+    :param gamma: 0.9
+    :param _value_func: the current value function
+    :return: a value function matching the given policy
+    """
+    global value_func
+    if value_func is None:
+        value_func = dict()
         for key in allStates.keys():
             curr_state = allStates[key]
             if len(curr_state.stateRoom[2]) == 0 and len(curr_state.stateRoom[1]) == 0 and (curr_state.stateRoom[3] == 0):
-                _value_func[key] = 10
+                value_func[key] = 10
             else:
-                _value_func[key] = 0
+                value_func[key] = 0
 
     while True:
         changed = False
@@ -519,20 +554,23 @@ def get_value_function(_policy, epsilon, gamma, _value_func=None):
             possible_states = get_possible_states(curr_state)
             for next_state_key in possible_states.keys():
                 next_state = allStates[next_state_key]
-                sigma_param += getProbSAS(curr_state, next_state, action) * _value_func[next_state_key]
+                sigma_param += getProbSAS(curr_state, next_state, action) * value_func[next_state_key]
             curr_reward = action_reward + gamma * sigma_param
-            if curr_reward - _value_func[state_key] >= epsilon:
-                _value_func[state_key] = curr_reward
+            value_func[state_key] = curr_reward
+            if abs(curr_reward - value_func[state_key]) >= epsilon:
                 changed = True
         if not changed:
             break
-    # return _value_func
 
 # general function for both algorithms
 
 
 # create the initial policy
 def get_policy():
+    """
+    This function return a policy according to the user request - by policy/value iteration
+    :return: a maximal policy for the program
+    """
     global keep_running
     algo_type = raw_input('For Value Iteration press \'v\', For Policy Iteration press \'p\': ')
     if algo_type == 'v':
@@ -548,50 +586,111 @@ def get_policy():
         raise ValueError('unknown planner')
 
 
-def get_random_policy():
-    policy = dict()
+def initiate_value_function():
+    """
+    This function returns a initial value function for value iteration
+    :return: initial value function
+    """
+    global value_func
     for key in allStates.keys():
         for op in OPS:
-            curr_state = allStates[key]
-            if curr_state.legalOp(op):
-                if curr_state.end:
-                    policy[key] = 'idle'
-                else:
-                    policy[key] = op
-                break
-    return policy
+            state = allStates[key]
+            if state.legalOp(op):
+                value_func[key] = -3 * max(roomHeight, roomWidth)
+
+
+def get_action(x_pos, y_pos, i_pos, j_pos):
+    """
+    This function returns the relevant action for current position and state
+    :param x_pos: x location
+    :param y_pos: y location
+    :param i_pos: i position - basket/fruit/stain
+    :param j_pos: j position - basket/fruit/stain
+    :return: relevant action
+    """
+    if x_pos > i_pos:
+        return "up"
+    elif x_pos < j_pos:
+        return "down"
+    elif y_pos > j_pos:
+        return "left"
+    else:
+        return "right"
+
+
+def get_initial_policy():
+    """
+    This function creates an initial policy  according to specifications we set and returns it.
+    :return: initial policy
+    """
+    _policy = dict()
+    for key in allStates.keys():
+        curr_state = allStates[key]
+        if curr_state.stateRoom[0] in curr_state.stateRoom[1]:
+            _policy[key] = "pick"
+        elif curr_state.stateRoom[0] in curr_state.stateRoom[2]:
+            _policy[key] = "clean"
+        elif curr_state.legalOp("putInBasket") and curr_state.stateRoom[3] > 0:
+            _policy[key] = "putInBasket"
+        elif len(curr_state.stateRoom[1]) == 0 and len(curr_state.stateRoom[2]) == 0 and curr_state.stateRoom[3] == 0:
+            _policy[key] = "idle"
+        elif len(curr_state.stateRoom[1]) > 0:
+            _policy[key] = get_action(curr_state.stateRoom[0][0], curr_state.stateRoom[0][1],
+                                      curr_state.stateRoom[1][0][0], curr_state.stateRoom[1][0][1])
+        elif len(curr_state.stateRoom[2]) > 0:
+            _policy[key] = get_action(curr_state.stateRoom[0][0], curr_state.stateRoom[0][1],
+                                      curr_state.stateRoom[2][0][0], curr_state.stateRoom[2][0][1])
+        else:
+            _policy[key] = get_action(curr_state.stateRoom[0][0], curr_state.stateRoom[0][1],
+                                      BASKET_POSITION[0], BASKET_POSITION[1])
+    return _policy
 
 
 def collect_and_plot_graph_data():
-    global average_per_second, keep_running, time_constant
+    """
+    This function runs by a seprated thread and writes every constant amount of time the average
+    of the value function at that specific time.
+    :return: None
+    """
+    global average_per_second, keep_running, seconds_per_period,  value_func
 
     last_time_printed = time.time()
     starting_time = last_time_printed
     while keep_running:
         curr_time = time.time()
-        if curr_time - last_time_printed > time_constant:
+        if curr_time - last_time_printed > seconds_per_period:
             values_list = value_func.values()
             average_per_second.append((np.sum(values_list)/len(values_list), (curr_time - starting_time)))
             last_time_printed = curr_time
 
 
 # creating plot thread
-graph_t = threading.Thread(target=collect_and_plot_graph_data, args=())
-graph_t.start()
+if plot_graph:
+    graph_t = threading.Thread(target=collect_and_plot_graph_data, args=())
+    graph_t.start()
 
 # initial policy
 policy = get_policy()
 
 initialState = State()
 
-iteration_x_values = list(map(lambda x: x[0], average_per_iteration))
-timing_x_values = list(map(lambda x: x[0], average_per_second))
-iteration_y_values = list(map(lambda x: x[1], average_per_iteration))
-timing_y_values = list(map(lambda x: x[1], average_per_second))
-py.plot(iteration_y_values, iteration_x_values)
-py.show()
-py.close()
-py.plot(timing_y_values, timing_x_values)
-py.show()
+# needed only if graph is plotted
+if plot_graph:
+    print average_per_iteration
+    iteration_x_values = list(map(lambda x: x[0], average_per_iteration))
+    timing_x_values = list(map(lambda x: x[0], average_per_second))
+    iteration_y_values = list(map(lambda x: x[1], average_per_iteration))
+    timing_y_values = list(map(lambda x: x[1], average_per_second))
+    py.plot(iteration_y_values, iteration_x_values)
+    py.xlabel("iterations")
+    py.ylabel("average_value")
+    py.title("states average value per iteartion")
+    py.show()
+    py.close()
+    py.plot(timing_y_values, timing_x_values)
+    py.xlabel("time")
+    py.ylabel("average_value")
+    py.title("states average value per constant time")
+    py.show()
 
 Show1.showRoom(room, policy, allStates, initialState, OPS, TRAN_PROB_MAT)
