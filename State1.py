@@ -683,7 +683,7 @@ if plot_graph:
     py.plot(iteration_y_values, iteration_x_values)
     py.xlabel("iterations")
     py.ylabel("average_value")
-    py.title("states average value per iteartion")
+    py.title("states average value per iteration")
     py.show()
     py.close()
     py.plot(timing_y_values, timing_x_values)

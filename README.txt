@@ -44,3 +44,7 @@ Constants for graphs:
  board: 5 on 5, all possible scattering of fruits and/or stains
  board: 7 on 7, 2 stains and 2 fruits
  board: 10 on 10, 2 stains and 2 fruits (work fast without plotting the graphs)
+
+
+Eden Abadi - 305554917
+Adar Vit - 305004186
